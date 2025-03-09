@@ -1,0 +1,25 @@
+{
+  "name": "gta2-style-game",
+  "version": "1.0.0",
+  "description": "A top-down GTA-inspired game built with JavaScript and Three.js",
+  "main": "js/core/main.js",
+  "scripts": {
+    "start": "npx serve",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "game",
+    "threejs",
+    "javascript",
+    "webgl",
+    "gta"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "serve": "^14.2.1"
+  }
+} 
