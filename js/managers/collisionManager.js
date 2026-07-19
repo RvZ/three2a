@@ -213,6 +213,9 @@ export class CollisionManager {
         if (wasMoving && this.game && this.game.soundManager) {
           this.game.soundManager.playCrash();
         }
+        if (wasMoving && this.game && this.game.shakeCamera) {
+          this.game.shakeCamera(0.4);
+        }
       }
     }
   }
@@ -351,9 +354,12 @@ export class CollisionManager {
       if (vehicle1.speed) vehicle1.speed *= 0.5;
       if (vehicle2.speed) vehicle2.speed *= 0.5;
 
-      // Play crash sound if game exists
+      // Play crash sound + shake the camera if game exists
       if (this.game && this.game.soundManager) {
         this.game.soundManager.playCrash();
+      }
+      if (this.game && this.game.shakeCamera) {
+        this.game.shakeCamera(0.5);
       }
     }
   }
@@ -398,9 +404,12 @@ export class CollisionManager {
       }
     }
 
-    // Play crash sound only for meaningful impacts
+    // Play crash sound + shake only for meaningful impacts
     if (isMoving && this.game && this.game.soundManager) {
       this.game.soundManager.playCrash();
+    }
+    if (isMoving && this.game && this.game.shakeCamera) {
+      this.game.shakeCamera(0.7);
     }
   }
 

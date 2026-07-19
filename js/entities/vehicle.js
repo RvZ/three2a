@@ -43,7 +43,7 @@ export class Vehicle {
     return colors[Math.floor(rand() * colors.length)];
   }
 
-  init(scene, x = 0, y = 0, z = 0) {
+  init(scene, x = 0, _y = 0, z = 0) {
     // Create vehicle based on type
     switch (this.type) {
       case 'sports':

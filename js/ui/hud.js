@@ -108,10 +108,51 @@ export class HUD {
     // Add container to document
     document.body.appendChild(this.container);
 
+    // Full-screen pause overlay (hidden until paused).
+    this.pauseOverlay = DOMUtils.createElement(
+      'div',
+      {
+        style: {
+          position: 'absolute',
+          inset: '0',
+          display: 'none',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'column',
+          gap: '12px',
+          background: 'rgba(0, 0, 0, 0.55)',
+          color: 'white',
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '48px',
+          fontWeight: 'bold',
+          textShadow: '2px 2px 4px black',
+          zIndex: '2000',
+          pointerEvents: 'none',
+        },
+      },
+      '',
+    );
+    const pausedTitle = DOMUtils.createElement('div', {}, '⏸ PAUSED');
+    const pausedHint = DOMUtils.createElement(
+      'div',
+      { style: { fontSize: '20px', fontWeight: 'normal', opacity: '0.85' } },
+      'Press P or Esc to resume',
+    );
+    this.pauseOverlay.appendChild(pausedTitle);
+    this.pauseOverlay.appendChild(pausedHint);
+    document.body.appendChild(this.pauseOverlay);
+
     // Show welcome message
     this.showMessage(
-      'Welcome to GTA 2 Style Game! 🎮 Use WASD to move, SPACE to enter/exit vehicles',
+      'Welcome to GTA 2 Style Game! 🎮 Use WASD to move, SPACE to enter/exit vehicles, P to pause',
     );
+  }
+
+  /** Show or hide the pause overlay. */
+  setPaused(paused) {
+    if (this.pauseOverlay) {
+      this.pauseOverlay.style.display = paused ? 'flex' : 'none';
+    }
   }
 
   updateLives() {

@@ -50,6 +50,12 @@ export class Game {
     this.footstepTimer = 0;
     this.footstepInterval = 0.3; // Time between footsteps in seconds
 
+    // Camera screen-shake amount (decays each frame).
+    this.shakeAmount = 0;
+
+    // Paused state (freezes simulation; rendering continues).
+    this.paused = false;
+
     // Event bus decouples systems (collision -> HUD/sound) without back-refs.
     this.events = new EventBus();
 
@@ -321,8 +327,34 @@ export class Game {
     }
   }
 
+  /** Pause or resume the simulation. Rendering keeps running so the last frame
+   * stays visible under the pause overlay. */
+  setPaused(paused) {
+    this.paused = paused;
+    if (this.hud) this.hud.setPaused(paused);
+    // Silence the engine while paused.
+    if (paused && this.engineSound) {
+      this.engineSound.stop();
+      this.engineSound = null;
+    } else if (!paused && this.player && this.player.isInVehicle && this.soundManager) {
+      this.engineSound = this.soundManager.playEngineSound(800);
+    }
+  }
+
   update() {
     if (!this.isGameRunning) return;
+
+    // Edge-triggered pause toggle (P / Escape).
+    if (this.inputManager.pauseTogglePressed) {
+      this.inputManager.pauseTogglePressed = false;
+      this.setPaused(!this.paused);
+    }
+    // While paused, freeze the sim but keep consuming delta so it doesn't pile
+    // up. render() still runs from the main loop.
+    if (this.paused) {
+      this.clock.getDelta();
+      return;
+    }
 
     // Clamp delta so a background-tab stall (getDelta can return several
     // seconds) can't teleport entities through walls on the next frame.
@@ -403,18 +435,34 @@ export class Game {
     this.collisionManager.updateDebugHelpers();
 
     // Update camera to follow player
-    this.updateCamera();
+    this.updateCamera(delta);
   }
 
-  updateCamera() {
+  /** Kick off a brief camera shake (e.g. on a crash). */
+  shakeCamera(intensity = 0.6) {
+    this.shakeAmount = Math.min(2, (this.shakeAmount || 0) + intensity);
+  }
+
+  updateCamera(delta = 0) {
     // Get player position
     const playerPosition = this.player.getPosition();
 
-    // Set camera position directly above player
-    this.camera.position.x = playerPosition.x;
-    this.camera.position.z = playerPosition.z;
+    // Decaying screen shake offsets the camera on the XZ plane.
+    let ox = 0;
+    let oz = 0;
+    if (this.shakeAmount > 0.001) {
+      ox = (Math.random() - 0.5) * this.shakeAmount;
+      oz = (Math.random() - 0.5) * this.shakeAmount;
+      // Exponential-ish decay, framerate independent.
+      this.shakeAmount *= Math.max(0, 1 - delta * 5);
+    } else {
+      this.shakeAmount = 0;
+    }
 
-    // Keep the camera looking at the player
+    this.camera.position.x = playerPosition.x + ox;
+    this.camera.position.z = playerPosition.z + oz;
+
+    // Keep the camera looking at the player.
     this.camera.lookAt(playerPosition);
   }
 
