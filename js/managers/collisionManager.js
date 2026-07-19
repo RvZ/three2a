@@ -202,9 +202,9 @@ export class CollisionManager {
       if (!vehicle.position) continue;
 
       if (this.collidesWithBuildings(vehicle)) {
-        // Only treat it as a "crash" (sound) if the vehicle was actually moving,
-        // so parked cars touching a wall don't spam the crash sound.
-        const wasMoving = Math.abs(vehicle.speed || 0) > 0.5;
+        // Capture impact speed before handleCollision zeroes it.
+        const impact = Math.abs(vehicle.speed || 0);
+        const wasMoving = impact > 0.5;
 
         if (typeof vehicle.handleCollision === 'function') {
           vehicle.handleCollision();
@@ -212,6 +212,7 @@ export class CollisionManager {
 
         if (wasMoving) {
           this.emitCrash(vehicle.position.x, vehicle.position.z, 0.4);
+          this.damageVehicle(vehicle, impact * 2);
         }
       }
     }
@@ -357,11 +358,14 @@ export class CollisionManager {
 
       // Only a "crash" if at least one vehicle was moving — otherwise this is
       // just spawn overlap being resolved and shouldn't spark or make noise.
-      const moving = Math.abs(vehicle1.speed || 0) > 0.5 || Math.abs(vehicle2.speed || 0) > 0.5;
-      if (moving) {
+      const closing = Math.abs(vehicle1.speed || 0) + Math.abs(vehicle2.speed || 0);
+      if (closing > 0.5) {
         const mx = (vehicle1.position.x + vehicle2.position.x) / 2;
         const mz = (vehicle1.position.z + vehicle2.position.z) / 2;
         this.emitCrash(mx, mz, 0.5);
+        // Both cars share the impact energy.
+        this.damageVehicle(vehicle1, closing * 1.5);
+        this.damageVehicle(vehicle2, closing * 1.5);
       }
     }
   }
@@ -422,6 +426,24 @@ export class CollisionManager {
   emitCrash(x, z, intensity) {
     if (this.game && this.game.events) {
       this.game.events.emit('crash', { x, z, intensity });
+    }
+  }
+
+  /**
+   * Apply crash damage to a vehicle and announce a wreck on the bus.
+   * @param {Object} vehicle - The vehicle to damage
+   * @param {number} amount - Damage points
+   */
+  damageVehicle(vehicle, amount) {
+    if (!vehicle || typeof vehicle.takeDamage !== 'function' || vehicle.isWrecked) return;
+    const wrecked = vehicle.takeDamage(amount);
+    if (wrecked && this.game && this.game.events) {
+      const wasPlayer = !!(this.game.player && this.game.player.currentVehicle === vehicle);
+      this.game.events.emit('vehicleWrecked', {
+        x: vehicle.position.x,
+        z: vehicle.position.z,
+        wasPlayer,
+      });
     }
   }
 

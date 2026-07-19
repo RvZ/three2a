@@ -24,6 +24,11 @@ export class Vehicle {
     this.headlightMaterial = null;
     this.taillightMaterial = null;
 
+    // Damage model.
+    this.maxHealth = 100;
+    this.health = 100;
+    this.isWrecked = false;
+
     // Direction vector (normalized)
     this.direction = new THREE.Vector3(0, 0, 1); // Forward is +Z (where headlights point)
   }
@@ -449,9 +454,40 @@ export class Vehicle {
    * @param {number} n - 0 (full day) .. 1 (full night)
    */
   setNightLevel(n) {
+    if (this.isWrecked) return; // wrecked cars stay dark
     const t = Math.max(0, Math.min(1, n));
     if (this.headlightMaterial) this.headlightMaterial.emissiveIntensity = 0.4 + t * 1.8;
     if (this.taillightMaterial) this.taillightMaterial.emissiveIntensity = 0.35 + t * 1.25;
+  }
+
+  /**
+   * Apply crash damage. Returns true if this hit wrecked the vehicle.
+   * @param {number} amount - Damage points
+   * @returns {boolean} True if the vehicle just became wrecked
+   */
+  takeDamage(amount) {
+    if (this.isWrecked) return false;
+    this.health = Math.max(0, this.health - amount);
+    if (this.health === 0) {
+      this.wreck();
+      return true;
+    }
+    return false;
+  }
+
+  /** Turn the vehicle into an undrivable, charred wreck. */
+  wreck() {
+    if (this.isWrecked) return;
+    this.isWrecked = true;
+    this.speed = 0;
+    this.maxSpeed = 0;
+    this.acceleration = 0;
+
+    // Char the body and kill the lights.
+    const body = this.mesh && this.mesh.material;
+    if (body && body.color) body.color.multiplyScalar(0.3);
+    if (this.headlightMaterial) this.headlightMaterial.emissiveIntensity = 0;
+    if (this.taillightMaterial) this.taillightMaterial.emissiveIntensity = 0;
   }
 
   setDriver(player) {

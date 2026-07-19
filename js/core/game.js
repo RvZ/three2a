@@ -58,6 +58,8 @@ export class Game {
 
     // Exhaust-puff timer (emits behind a moving vehicle).
     this.exhaustTimer = 0;
+    // Damage-smoke timer (emits from badly damaged / wrecked vehicles).
+    this.smokeTimer = 0;
 
     // Camera screen-shake amount (decays each frame).
     this.shakeAmount = 0;
@@ -232,6 +234,24 @@ export class Game {
       this.soundManager.playCrash();
       this.shakeCamera(0.3 + intensity * 0.6);
       if (this.particles) this.particles.emitSparks(x, 0.5, z, intensity);
+    });
+
+    // A vehicle was wrecked: big spark burst + heavy shake, and if it was the
+    // player's car, eject and injure them.
+    this.events.on('vehicleWrecked', ({ x, z, wasPlayer }) => {
+      this.soundManager.playCrash();
+      this.shakeCamera(1.0);
+      if (this.particles) this.particles.emitSparks(x, 0.6, z, 1.3);
+
+      if (wasPlayer) {
+        if (this.player.isInVehicle) {
+          this.player.exitVehicle();
+          this.collisionManager.registerPedestrian(this.player);
+          this.events.emit('exitVehicle', {});
+        }
+        this.player.takeDamage(25, this);
+        this.hud.showMessage('Your vehicle was wrecked! 💥', 2500);
+      }
     });
   }
 
@@ -517,6 +537,17 @@ export class Game {
           }
         }
       }
+      // Damaged and wrecked vehicles trail smoke.
+      this.smokeTimer += delta;
+      if (this.smokeTimer >= 0.12) {
+        this.smokeTimer = 0;
+        for (const v of this.collisionManager.vehicles) {
+          if (v.isWrecked || v.health < v.maxHealth * 0.4) {
+            this.particles.emitExhaust(v.position.x, 0.8, v.position.z, 0, 0);
+          }
+        }
+      }
+
       this.particles.update(delta);
     }
 
