@@ -3,6 +3,7 @@ import { Building } from '../entities/building.js';
 import { Vehicle } from '../entities/vehicle.js';
 import { Person } from '../entities/person.js';
 import { TextureGenerator } from './textureGenerator.js';
+import { rand } from '../utils/utils';
 
 export class CityGenerator {
   constructor(world) {
@@ -213,7 +214,7 @@ export class CityGenerator {
    */
   createBuildingsInBlock(scene, blockX, blockZ, buildableSize) {
     // Determine number of buildings in this block (1-4)
-    const buildingCount = Math.floor(Math.random() * 4) + 1;
+    const buildingCount = Math.floor(rand() * 4) + 1;
 
     // Divide the block into sections
     const sections = [];
@@ -228,7 +229,7 @@ export class CityGenerator {
       });
     } else if (buildingCount === 2) {
       // Two buildings side by side
-      const splitDirection = Math.random() > 0.5 ? 'horizontal' : 'vertical';
+      const splitDirection = rand() > 0.5 ? 'horizontal' : 'vertical';
 
       if (splitDirection === 'horizontal') {
         sections.push({
@@ -285,7 +286,7 @@ export class CityGenerator {
       });
     } else {
       // Three buildings in an L shape
-      const orientation = Math.floor(Math.random() * 4);
+      const orientation = Math.floor(rand() * 4);
 
       if (orientation === 0) {
         // L shape in top-left
@@ -373,7 +374,7 @@ export class CityGenerator {
     // Create buildings in each section
     for (const section of sections) {
       // Random building height (3-8 stories)
-      const height = Math.floor(Math.random() * 6) + 3;
+      const height = Math.floor(rand() * 6) + 3;
 
       // Create building
       const building = new Building(section.width, height, section.depth);
@@ -521,7 +522,7 @@ export class CityGenerator {
     for (let i = 0; i < carCount; i++) {
       // Choose a random car type
       const carTypes = ['sedan', 'sports', 'truck', 'van'];
-      const carType = carTypes[Math.floor(Math.random() * carTypes.length)];
+      const carType = carTypes[Math.floor(rand() * carTypes.length)];
 
       // Create vehicle
       const vehicle = new Vehicle(carType);
@@ -552,37 +553,37 @@ export class CityGenerator {
    */
   getRandomParkingPosition(totalBlockSize, roadWidth, sidewalkWidth, citySize) {
     // Decide if car should be parked along a horizontal or vertical road
-    const isHorizontal = Math.random() > 0.5;
+    const isHorizontal = rand() > 0.5;
 
     let x, z, rotation;
 
     if (isHorizontal) {
       // Park along horizontal road
       // Choose a random street
-      const streetIndex = Math.floor(Math.random() * (citySize + 1));
+      const streetIndex = Math.floor(rand() * (citySize + 1));
       z = streetIndex * totalBlockSize - (citySize * totalBlockSize) / 2;
 
       // Offset to parking spot (north or south of the road)
-      const isSouth = Math.random() > 0.5;
+      const isSouth = rand() > 0.5;
       z += (isSouth ? 1 : -1) * (roadWidth / 2 + sidewalkWidth / 2);
 
       // Random position along road
-      x = (Math.random() * 2 - 1) * ((citySize * totalBlockSize) / 2);
+      x = (rand() * 2 - 1) * ((citySize * totalBlockSize) / 2);
 
       // Rotate to face the road
       rotation = isSouth ? Math.PI : 0;
     } else {
       // Park along vertical road
       // Choose a random street
-      const streetIndex = Math.floor(Math.random() * (citySize + 1));
+      const streetIndex = Math.floor(rand() * (citySize + 1));
       x = streetIndex * totalBlockSize - (citySize * totalBlockSize) / 2;
 
       // Offset to parking spot (east or west of the road)
-      const isWest = Math.random() > 0.5;
+      const isWest = rand() > 0.5;
       x += (isWest ? 1 : -1) * (roadWidth / 2 + sidewalkWidth / 2);
 
       // Random position along road
-      z = (Math.random() * 2 - 1) * ((citySize * totalBlockSize) / 2);
+      z = (rand() * 2 - 1) * ((citySize * totalBlockSize) / 2);
 
       // Rotate to face the road
       rotation = isWest ? Math.PI * 1.5 : Math.PI * 0.5;
@@ -628,32 +629,32 @@ export class CityGenerator {
    */
   getRandomSidewalkPosition(totalBlockSize, roadWidth, sidewalkWidth, citySize) {
     // Decide if pedestrian should be on a horizontal or vertical sidewalk
-    const isHorizontal = Math.random() > 0.5;
+    const isHorizontal = rand() > 0.5;
 
     let x, z;
 
     if (isHorizontal) {
       // Place on horizontal sidewalk (along X axis)
       // Choose a random street
-      const streetIndex = Math.floor(Math.random() * (citySize + 1));
+      const streetIndex = Math.floor(rand() * (citySize + 1));
       z = streetIndex * totalBlockSize - (citySize * totalBlockSize) / 2;
 
       // Offset to sidewalk (north or south of the road)
-      z += (Math.random() > 0.5 ? 1 : -1) * (roadWidth / 2 + sidewalkWidth / 2);
+      z += (rand() > 0.5 ? 1 : -1) * (roadWidth / 2 + sidewalkWidth / 2);
 
       // Random position along sidewalk
-      x = (Math.random() * 2 - 1) * ((citySize * totalBlockSize) / 2);
+      x = (rand() * 2 - 1) * ((citySize * totalBlockSize) / 2);
     } else {
       // Place on vertical sidewalk (along Z axis)
       // Choose a random street
-      const streetIndex = Math.floor(Math.random() * (citySize + 1));
+      const streetIndex = Math.floor(rand() * (citySize + 1));
       x = streetIndex * totalBlockSize - (citySize * totalBlockSize) / 2;
 
       // Offset to sidewalk (east or west of the road)
-      x += (Math.random() > 0.5 ? 1 : -1) * (roadWidth / 2 + sidewalkWidth / 2);
+      x += (rand() > 0.5 ? 1 : -1) * (roadWidth / 2 + sidewalkWidth / 2);
 
       // Random position along sidewalk
-      z = (Math.random() * 2 - 1) * ((citySize * totalBlockSize) / 2);
+      z = (rand() * 2 - 1) * ((citySize * totalBlockSize) / 2);
     }
 
     return { x, z };

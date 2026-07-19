@@ -16,6 +16,14 @@ export function setRng(rng: Rng | (() => number)): void {
   rngSource = typeof rng === 'function' ? rng : () => rng.next();
 }
 
+/**
+ * A drop-in replacement for `Math.random()` that draws from the installed RNG
+ * source. Generation code imports this so an entire city can be reproduced from
+ * a seed. Reads the current source on every call, so {@link setRng} takes effect
+ * even for modules imported earlier.
+ */
+export const rand = (): number => rngSource();
+
 // Math utilities
 export const MathUtils = {
   /** Clamp a value between min and max. */

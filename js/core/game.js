@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { World } from './world.js';
+import { Rng } from '../utils/rng';
+import { setRng, DebugUtils } from '../utils/utils';
+import { EventBus } from './eventBus';
 import { Player } from '../entities/player.js';
 import { Vehicle } from '../entities/vehicle.js';
 import { HUD } from '../ui/hud.js';
@@ -9,6 +12,9 @@ import { CollisionManager } from '../managers/collisionManager.js';
 import { MobileControlManager } from '../managers/mobileControlManager.js';
 
 export class Game {
+  /** How much of the world the orthographic camera shows at zoom 1. */
+  static BASE_VIEW_SIZE = 30;
+
   constructor() {
     this.scene = null;
     this.camera = null;
@@ -39,16 +45,35 @@ export class Game {
     // Footstep timer
     this.footstepTimer = 0;
     this.footstepInterval = 0.3; // Time between footsteps in seconds
+
+    // Event bus decouples systems (collision -> HUD/sound) without back-refs.
+    this.events = new EventBus();
+
+    // Bound event listeners kept so they can be removed in dispose().
+    this._onResize = () => this.onWindowResize();
+    this._onWheel = (event) => this.onWheel(event);
+
+    // Seed for procedural generation. `?seed=<value>` in the URL makes a city
+    // reproducible/shareable; otherwise a random seed is chosen.
+    const params = new URLSearchParams(window.location.search);
+    this.seed = params.get('seed') || String(Math.floor(Math.random() * 1e9));
   }
 
   init() {
+    // Make all procedural generation deterministic from the seed.
+    setRng(new Rng(this.seed));
+    DebugUtils.log(`World seed: ${this.seed}`);
+
+    // Wire event-driven HUD/audio reactions before anything can emit.
+    this.registerEventHandlers();
+
     // Create scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x87ceeb); // Sky blue background
 
     // Create camera - using orthographic camera for true top-down view
     const aspect = window.innerWidth / window.innerHeight;
-    const viewSize = 30; // Controls how much of the world is visible
+    const viewSize = Game.BASE_VIEW_SIZE; // Controls how much of the world is visible
     this.camera = new THREE.OrthographicCamera(
       -viewSize * aspect,
       viewSize * aspect,
@@ -110,25 +135,44 @@ export class Game {
     this.hud = new HUD(this);
     this.hud.init();
 
-    // Handle window resize
-    window.addEventListener('resize', () => this.onWindowResize());
-
-    // Setup zoom controls
-    this.setupZoomControls();
+    // Handle window resize and mouse-wheel zoom (bound refs so dispose() can
+    // detach them).
+    window.addEventListener('resize', this._onResize);
+    window.addEventListener('wheel', this._onWheel, { passive: true });
 
     // Start the game
     this.isGameRunning = true;
 
-    // Debug: Log player and vehicle positions
-    console.log('Player position:', this.player.position);
-    console.log(
-      'On sidewalk:',
-      this.world.isOnSidewalk(this.player.position.x, this.player.position.z),
+    DebugUtils.log(
+      `Spawned player on sidewalk=${this.world.isOnSidewalk(
+        this.player.position.x,
+        this.player.position.z,
+      )} with ${this.vehicles.length} vehicles`,
     );
-    console.log('Player vehicles:', this.vehicles.length);
-    for (let i = 0; i < this.vehicles.length; i++) {
-      console.log(`Vehicle ${i} (${this.vehicles[i].type}) position:`, this.vehicles[i].position);
-    }
+  }
+
+  /**
+   * Subscribe HUD and audio reactions to gameplay events. Systems emit on the
+   * bus instead of calling the HUD / sound manager directly.
+   */
+  registerEventHandlers() {
+    this.events.on('enterVehicle', ({ vehicleType }) => {
+      this.hud.showVehicleMessage(vehicleType);
+      this.soundManager.playVehicleStart();
+      this.engineSound = this.soundManager.playEngineSound(800);
+    });
+
+    this.events.on('exitVehicle', () => {
+      this.hud.showExitVehicleMessage();
+      if (this.engineSound) {
+        this.engineSound.stop();
+        this.engineSound = null;
+      }
+    });
+
+    this.events.on('entityKilled', ({ points }) => {
+      if (points) this.hud.addScore(points);
+    });
   }
 
   addPlayerVehicles() {
@@ -164,11 +208,9 @@ export class Game {
 
       // Register vehicle with collision system
       this.collisionManager.registerVehicle(vehicle);
-
-      console.log(`Created ${vehicleTypes[i]} at position:`, pos);
     }
 
-    console.log(`Added ${this.vehicles.length} vehicles for the player`);
+    DebugUtils.log(`Added ${this.vehicles.length} player vehicles`);
   }
 
   setupLighting() {
@@ -197,41 +239,61 @@ export class Game {
     this.scene.add(directionalLight);
   }
 
-  setupZoomControls() {
-    // Add mouse wheel zoom functionality
-    window.addEventListener('wheel', (event) => {
-      if (!this.isGameRunning) return;
-
-      // Adjust zoom level based on wheel direction
-      const zoomSpeed = 0.1;
-      const zoomDelta = event.deltaY > 0 ? zoomSpeed : -zoomSpeed;
-
-      // Update camera zoom
-      this.cameraZoom = Math.max(0.5, Math.min(2.0, this.cameraZoom + zoomDelta));
-
-      // Apply zoom to orthographic camera
-      const aspect = window.innerWidth / window.innerHeight;
-      const viewSize = 30 / this.cameraZoom;
-      this.camera.left = -viewSize * aspect;
-      this.camera.right = viewSize * aspect;
-      this.camera.top = viewSize;
-      this.camera.bottom = -viewSize;
-      this.camera.updateProjectionMatrix();
-    });
+  onWheel(event) {
+    if (!this.isGameRunning) return;
+    const zoomSpeed = 0.1;
+    const zoomDelta = event.deltaY > 0 ? zoomSpeed : -zoomSpeed;
+    this.cameraZoom = Math.max(0.5, Math.min(2.0, this.cameraZoom + zoomDelta));
+    this.updateCameraProjection();
   }
 
   onWindowResize() {
-    const aspect = window.innerWidth / window.innerHeight;
-    const viewSize = 30 / this.cameraZoom;
+    this.updateCameraProjection();
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
 
-    // Update orthographic camera aspect ratio
+  /**
+   * Recompute the orthographic frustum from the current aspect ratio and zoom.
+   * Single source of truth for both resize and wheel-zoom.
+   */
+  updateCameraProjection() {
+    const aspect = window.innerWidth / window.innerHeight;
+    const viewSize = Game.BASE_VIEW_SIZE / this.cameraZoom;
     this.camera.left = -viewSize * aspect;
     this.camera.right = viewSize * aspect;
     this.camera.top = viewSize;
     this.camera.bottom = -viewSize;
     this.camera.updateProjectionMatrix();
+  }
 
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+  /** Tear down listeners and event handlers (for restart / hot-reload). */
+  dispose() {
+    this.isGameRunning = false;
+    window.removeEventListener('resize', this._onResize);
+    window.removeEventListener('wheel', this._onWheel);
+    this.events.clear();
+    if (this.engineSound) {
+      this.engineSound.stop();
+      this.engineSound = null;
+    }
+  }
+
+  /**
+   * Enter or exit the nearest vehicle and update collision registration. HUD
+   * and audio reactions are handled by the event handlers, keeping this method
+   * focused on state transitions.
+   */
+  toggleVehicle() {
+    const wasInVehicle = this.player.isInVehicle;
+    this.player.toggleVehicle(this.vehicles);
+
+    if (!wasInVehicle && this.player.isInVehicle) {
+      this.collisionManager.unregisterEntity(this.player);
+      this.events.emit('enterVehicle', { vehicleType: this.player.currentVehicle.type });
+    } else if (wasInVehicle && !this.player.isInVehicle) {
+      this.collisionManager.registerPedestrian(this.player);
+      this.events.emit('exitVehicle', {});
+    }
   }
 
   update() {
@@ -249,38 +311,7 @@ export class Game {
     if (this.inputManager.actionPressed) {
       // Reset the flag immediately to prevent multiple toggles
       this.inputManager.actionPressed = false;
-
-      // Store previous vehicle state to check if it changed
-      const wasInVehicle = this.player.isInVehicle;
-      const previousVehicle = this.player.currentVehicle;
-
-      // Toggle vehicle
-      this.player.toggleVehicle(this.vehicles);
-
-      // Update HUD and play sounds based on vehicle state change
-      if (!wasInVehicle && this.player.isInVehicle) {
-        // Player entered a vehicle
-        this.hud.showVehicleMessage(this.player.currentVehicle.type);
-        this.soundManager.playVehicleStart();
-
-        // Start engine sound
-        this.engineSound = this.soundManager.playEngineSound(800);
-
-        // Update collision system - remove player from pedestrians
-        this.collisionManager.unregisterEntity(this.player);
-      } else if (wasInVehicle && !this.player.isInVehicle) {
-        // Player exited a vehicle
-        this.hud.showExitVehicleMessage();
-
-        // Stop engine sound
-        if (this.engineSound) {
-          this.engineSound.stop();
-          this.engineSound = null;
-        }
-
-        // Update collision system - add player back to pedestrians
-        this.collisionManager.registerPedestrian(this.player);
-      }
+      this.toggleVehicle();
     }
 
     // Check for horn button press

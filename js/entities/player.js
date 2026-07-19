@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Person } from './person.js';
+import { DebugUtils } from '../utils/utils';
 
 export class Player {
   constructor() {
@@ -147,31 +148,14 @@ export class Player {
   updateVehicle(delta) {
     if (!this.currentVehicle) return;
 
-    // Store previous position for collision detection
-    const previousPosition = this.currentVehicle.position.clone();
-
-    // Pass player input to vehicle
-    // The vehicle now handles its own movement logic
+    // The vehicle handles its own movement logic; building/vehicle collisions
+    // are resolved centrally by the CollisionManager.
     this.currentVehicle.update(delta, {
       moveForward: this.moveForward,
       moveBackward: this.moveBackward,
       moveLeft: this.moveLeft,
       moveRight: this.moveRight,
     });
-
-    // Check for collision
-    if (this.checkVehicleCollision()) {
-      // Play crash sound
-      if (this.game && this.game.soundManager) {
-        this.game.soundManager.playCrash();
-      }
-    }
-  }
-
-  checkVehicleCollision() {
-    // This is a placeholder for actual collision detection
-    // In a real game, you would check against buildings, other vehicles, etc.
-    return false;
   }
 
   toggleVehicle(vehicles) {
@@ -183,14 +167,13 @@ export class Player {
       if (nearestVehicle) {
         this.enterVehicle(nearestVehicle);
       } else {
-        console.log('No vehicle nearby to enter. Interaction radius:', this.interactionRadius);
+        DebugUtils.log(`No vehicle within interaction radius ${this.interactionRadius}`);
       }
     }
   }
 
   findNearestVehicle(vehicles) {
     if (!vehicles || vehicles.length === 0) {
-      console.log('No vehicles available');
       return null;
     }
 
@@ -199,19 +182,10 @@ export class Player {
 
     for (const vehicle of vehicles) {
       const distance = this.position.distanceTo(vehicle.position);
-      console.log(`Distance to ${vehicle.type}: ${distance.toFixed(2)} units`);
       if (distance < nearestDistance) {
         nearestDistance = distance;
         nearestVehicle = vehicle;
       }
-    }
-
-    if (nearestVehicle) {
-      console.log(
-        `Found nearest vehicle (${nearestVehicle.type}) at distance ${nearestDistance.toFixed(2)}`,
-      );
-    } else {
-      console.log('No vehicle within interaction radius');
     }
 
     return nearestVehicle;
@@ -223,7 +197,7 @@ export class Player {
     this.isInVehicle = true;
     this.currentVehicle = vehicle;
     vehicle.setDriver(this);
-    console.log(`Entered ${vehicle.type} vehicle`);
+    DebugUtils.log(`Entered ${vehicle.type} vehicle`);
   }
 
   exitVehicle() {
@@ -275,7 +249,7 @@ export class Player {
     this.isInVehicle = false;
     this.currentVehicle = null;
     this.person.mesh.visible = true;
-    console.log('Exited vehicle');
+    DebugUtils.log('Exited vehicle');
   }
 
   // Handle collision by implementing sliding along walls instead of just stopping

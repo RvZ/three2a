@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { rand } from '../utils/utils';
 
 /**
  * Utility class for generating textures used in the game
@@ -20,9 +21,9 @@ export class TextureGenerator {
 
     // Add some noise for texture
     for (let i = 0; i < 5000; i++) {
-      const x = Math.random() * 512;
-      const y = Math.random() * 512;
-      const gray = 30 + Math.random() * 20; // Random gray value
+      const x = rand() * 512;
+      const y = rand() * 512;
+      const gray = 30 + rand() * 20; // Random gray value
       context.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
       context.fillRect(x, y, 2, 2);
     }
@@ -106,7 +107,7 @@ export class TextureGenerator {
         const y = row * (windowSize + windowSpacing) + windowSpacing;
 
         // Random window state (some windows might be darker)
-        if (Math.random() > 0.2) {
+        if (rand() > 0.2) {
           context.fillRect(x, y, windowSize, windowSize);
         } else {
           context.fillStyle = '#3a6a8a'; // Darker blue for some windows
@@ -142,7 +143,7 @@ export class TextureGenerator {
     for (let y = 50; y < 512; y += 30) {
       for (let x = 20; x < 512; x += 40) {
         // Random window state (lit or unlit)
-        const isLit = Math.random() > 0.7;
+        const isLit = rand() > 0.7;
         context.fillStyle = isLit ? '#ffcc77' : '#444444';
         context.fillRect(x, y, 15, 20);
       }
@@ -172,12 +173,12 @@ export class TextureGenerator {
 
     // Add grass texture
     for (let i = 0; i < 50000; i++) {
-      const x = Math.random() * 1024;
-      const y = Math.random() * 1024;
-      const size = Math.random() * 3 + 1;
+      const x = rand() * 1024;
+      const y = rand() * 1024;
+      const size = rand() * 3 + 1;
 
       // Random grass shade
-      const shade = Math.floor(Math.random() * 30);
+      const shade = Math.floor(rand() * 30);
       context.fillStyle = `rgb(${20 + shade}, ${50 + shade}, ${0 + shade})`;
       context.fillRect(x, y, size, size);
     }

@@ -33,6 +33,8 @@ export default tseslint.config(
         HTMLElement: 'readonly',
         HTMLCanvasElement: 'readonly',
         matchMedia: 'readonly',
+        URLSearchParams: 'readonly',
+        URL: 'readonly',
         // Loaded at runtime from a vendored script on mobile.
         nipplejs: 'readonly',
       },

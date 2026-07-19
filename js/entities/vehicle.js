@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ObjectUtils } from '../utils/utils';
+import { ObjectUtils, rand } from '../utils/utils';
 
 export class Vehicle {
   constructor(type = 'sedan') {
@@ -40,7 +40,7 @@ export class Vehicle {
       0x964b00, // brown
     ];
 
-    return colors[Math.floor(Math.random() * colors.length)];
+    return colors[Math.floor(rand() * colors.length)];
   }
 
   init(scene, x = 0, y = 0, z = 0) {

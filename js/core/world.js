@@ -1,7 +1,4 @@
 import * as THREE from 'three';
-import { Building } from '../entities/building.js';
-import { Vehicle } from '../entities/vehicle.js';
-import { Person } from '../entities/person.js';
 import { CityGenerator } from '../generators/cityGenerator.js';
 import { TextureGenerator } from '../generators/textureGenerator.js';
 

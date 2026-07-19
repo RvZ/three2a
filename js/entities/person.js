@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ObjectUtils } from '../utils/utils';
+import { ObjectUtils, rand } from '../utils/utils';
 
 export class Person {
   constructor(options = {}) {
@@ -17,7 +17,7 @@ export class Person {
     // Live position reference; assigned to mesh.position in init() so the
     // collision system (which reads entity.position) can see NPCs.
     this.position = null;
-    this.walkingSpeed = 0.5 + Math.random() * 1.5; // Random walking speed for pedestrians
+    this.walkingSpeed = 0.5 + rand() * 1.5; // Random walking speed for pedestrians
     this.walkingDirection = new THREE.Vector3(0, 0, 0);
     this.targetPosition = null;
     this.isWalking = false;
@@ -212,7 +212,7 @@ export class Person {
       this.updatePedestrianMovement(delta);
     } else {
       // Randomly decide to start walking again
-      if (Math.random() < 0.01) {
+      if (rand() < 0.01) {
         // 1% chance per frame to start walking
         this.isWalking = true;
         this.findNewTarget();
@@ -281,7 +281,7 @@ export class Person {
       const distanceToTarget = this.mesh.position.distanceTo(this.targetPosition);
       if (distanceToTarget < 0.5) {
         this.targetPosition = null;
-        this.isWalking = Math.random() > 0.3; // 70% chance to keep walking
+        this.isWalking = rand() > 0.3; // 70% chance to keep walking
       }
     }
   }
@@ -289,8 +289,8 @@ export class Person {
   findNewTarget() {
     // Find a new random position to walk to
     const range = 20;
-    const x = this.mesh.position.x + (Math.random() * range * 2 - range);
-    const z = this.mesh.position.z + (Math.random() * range * 2 - range);
+    const x = this.mesh.position.x + (rand() * range * 2 - range);
+    const z = this.mesh.position.z + (rand() * range * 2 - range);
     this.targetPosition = new THREE.Vector3(x, 0, z);
     this.isWalking = true;
   }
@@ -341,7 +341,7 @@ export class Person {
       0xa9a9a9, // Gray
       0xe6e6fa, // Light gray/white
     ];
-    return hairColors[Math.floor(Math.random() * hairColors.length)];
+    return hairColors[Math.floor(rand() * hairColors.length)];
   }
 
   getRandomSkinColor() {
@@ -353,7 +353,7 @@ export class Person {
       0xc68642, // Dark
       0x8d5524, // Very dark
     ];
-    return skinColors[Math.floor(Math.random() * skinColors.length)];
+    return skinColors[Math.floor(rand() * skinColors.length)];
   }
 
   getRandomClothingColor() {
@@ -371,6 +371,6 @@ export class Person {
       0xffffff, // White
       0x808080, // Gray
     ];
-    return clothingColors[Math.floor(Math.random() * clothingColors.length)];
+    return clothingColors[Math.floor(rand() * clothingColors.length)];
   }
 }

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ObjectUtils } from '../utils/utils';
+import { ObjectUtils, rand } from '../utils/utils';
 
 export class Building {
   constructor(width = 5, height = 10, depth = 5) {
@@ -85,7 +85,7 @@ export class Building {
     this.group.add(tower);
 
     // Add antenna or spire to top
-    if (Math.random() > 0.5) {
+    if (rand() > 0.5) {
       const antennaGeometry = new THREE.CylinderGeometry(0, 0.2, 2, 4);
       const antennaMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
       const antenna = new THREE.Mesh(antennaGeometry, antennaMaterial);
@@ -173,22 +173,22 @@ export class Building {
     const acMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
     const ac = new THREE.Mesh(acGeometry, acMaterial);
     ac.position.set(
-      x + (Math.random() - 0.5) * (this.width * 0.5),
+      x + (rand() - 0.5) * (this.width * 0.5),
       roofY + 0.25,
-      z + (Math.random() - 0.5) * (this.depth * 0.5),
+      z + (rand() - 0.5) * (this.depth * 0.5),
     );
     ac.castShadow = true;
     this.group.add(ac);
 
     // Water tank (for some buildings)
-    if (Math.random() > 0.5) {
+    if (rand() > 0.5) {
       const tankGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 8);
       const tankMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
       const tank = new THREE.Mesh(tankGeometry, tankMaterial);
       tank.position.set(
-        x + (Math.random() - 0.5) * (this.width * 0.5),
+        x + (rand() - 0.5) * (this.width * 0.5),
         roofY + 0.5,
-        z + (Math.random() - 0.5) * (this.depth * 0.5),
+        z + (rand() - 0.5) * (this.depth * 0.5),
       );
       tank.castShadow = true;
       this.group.add(tank);
@@ -206,7 +206,7 @@ export class Building {
 
     for (let floor = 1; floor < floors; floor++) {
       // Add balconies on random sides
-      const side = Math.floor(Math.random() * 4);
+      const side = Math.floor(rand() * 4);
 
       const balconyGeometry = new THREE.BoxGeometry(
         side % 2 === 0 ? balconyWidth : balconyDepth,
@@ -245,9 +245,9 @@ export class Building {
 
   createBuildingMaterial(hueBase = 0.05, satBase = 0.2, lightBase = 0.5) {
     // Generate random building color based on provided base values
-    const hue = hueBase + Math.random() * 0.1;
-    const saturation = satBase + Math.random() * 0.2;
-    const lightness = lightBase + Math.random() * 0.2;
+    const hue = hueBase + rand() * 0.1;
+    const saturation = satBase + rand() * 0.2;
+    const lightness = lightBase + rand() * 0.2;
 
     const color = new THREE.Color().setHSL(hue, saturation, lightness);
 
@@ -325,7 +325,7 @@ export class Building {
     for (let row = 0; row < windowRows; row++) {
       for (let col = 0; col < windowCols; col++) {
         // Random window color (some lit, some dark)
-        const isLit = Math.random() > 0.6;
+        const isLit = rand() > 0.6;
 
         // Different window colors based on building type
         let windowColor;
@@ -334,22 +334,22 @@ export class Building {
           switch (this.type) {
             case 'skyscraper':
               // Cool blue/white for skyscrapers
-              windowColor = `rgba(200, 220, 255, ${Math.random() * 0.3 + 0.7})`;
+              windowColor = `rgba(200, 220, 255, ${rand() * 0.3 + 0.7})`;
               break;
             case 'office':
               // Fluorescent white/yellow for offices
-              windowColor = `rgba(255, 255, ${Math.floor(Math.random() * 50) + 200}, ${Math.random() * 0.3 + 0.7})`;
+              windowColor = `rgba(255, 255, ${Math.floor(rand() * 50) + 200}, ${rand() * 0.3 + 0.7})`;
               break;
             case 'apartment':
               // Warm yellow/orange for apartments
-              windowColor = `rgba(255, ${Math.floor(Math.random() * 50) + 200}, 150, ${Math.random() * 0.4 + 0.6})`;
+              windowColor = `rgba(255, ${Math.floor(rand() * 50) + 200}, 150, ${rand() * 0.4 + 0.6})`;
               break;
             case 'house':
               // Very warm yellow for houses
-              windowColor = `rgba(255, 240, 180, ${Math.random() * 0.5 + 0.5})`;
+              windowColor = `rgba(255, 240, 180, ${rand() * 0.5 + 0.5})`;
               break;
             default:
-              windowColor = `rgba(255, 255, ${Math.floor(Math.random() * 100) + 155}, ${Math.random() * 0.5 + 0.5})`;
+              windowColor = `rgba(255, 255, ${Math.floor(rand() * 100) + 155}, ${rand() * 0.5 + 0.5})`;
           }
         } else {
           // Dark windows with slight variation by type
