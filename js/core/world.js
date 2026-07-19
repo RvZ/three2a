@@ -210,7 +210,7 @@ export class World {
    * @param {number} spacing - Distance between adjacent vehicles
    * @returns {Array<{x:number, z:number}>} Positions on the nearest road
    */
-  getRoadSpawnPositions(x, z, count, spacing = 5) {
+  getRoadSpawnPositions(x, z, count, spacing = 6) {
     if (!this.totalBlockSize) {
       this.totalBlockSize = this.blockSize + this.roadWidth;
     }

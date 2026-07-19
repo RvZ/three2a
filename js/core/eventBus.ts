@@ -11,6 +11,7 @@ export interface GameEvents {
   enterVehicle: { vehicleType: string };
   exitVehicle: Record<string, never>;
   entityKilled: { kind: 'pedestrian' | 'vehicle'; points: number };
+  crash: { x: number; z: number; intensity: number };
   scoreChanged: { score: number; delta: number };
   damage: { target: 'player' | 'npc' | 'vehicle'; amount: number };
   playerDied: Record<string, never>;

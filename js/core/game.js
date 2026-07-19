@@ -4,6 +4,7 @@ import { Rng } from '../utils/rng';
 import { setRng, DebugUtils } from '../utils/utils';
 import { EventBus } from './eventBus';
 import { DayNightCycle } from './dayNightCycle';
+import { ParticleSystem } from '../effects/particles';
 import { Minimap } from '../ui/minimap';
 import { Player } from '../entities/player.js';
 import { Vehicle } from '../entities/vehicle.js';
@@ -50,6 +51,9 @@ export class Game {
     // Footstep timer
     this.footstepTimer = 0;
     this.footstepInterval = 0.3; // Time between footsteps in seconds
+
+    // Exhaust-puff timer (emits behind a moving vehicle).
+    this.exhaustTimer = 0;
 
     // Camera screen-shake amount (decays each frame).
     this.shakeAmount = 0;
@@ -158,6 +162,10 @@ export class Game {
     // Minimap overlay (bottom-right).
     this.minimap = new Minimap(160);
 
+    // Particle effects (vehicle exhaust, crash sparks).
+    this.particles = new ParticleSystem();
+    this.scene.add(this.particles.points);
+
     // Handle window resize and mouse-wheel zoom (bound refs so dispose() can
     // detach them).
     window.addEventListener('resize', this._onResize);
@@ -195,6 +203,13 @@ export class Game {
 
     this.events.on('entityKilled', ({ points }) => {
       if (points) this.hud.addScore(points);
+    });
+
+    // A crash: play the sound, shake the camera, and throw sparks at the impact.
+    this.events.on('crash', ({ x, z, intensity }) => {
+      this.soundManager.playCrash();
+      this.shakeCamera(0.3 + intensity * 0.6);
+      if (this.particles) this.particles.emitSparks(x, 0.5, z, intensity);
     });
   }
 
@@ -313,6 +328,10 @@ export class Game {
     if (this.minimap) {
       this.minimap.dispose();
       this.minimap = null;
+    }
+    if (this.particles) {
+      this.particles.dispose();
+      this.particles = null;
     }
     if (this.engineSound) {
       this.engineSound.stop();
@@ -452,6 +471,26 @@ export class Game {
           if (vehicle.setNightLevel) vehicle.setNightLevel(nightLevel);
         }
       }
+    }
+
+    // Emit exhaust behind the player's vehicle while it's moving, then advance
+    // all particles.
+    if (this.particles) {
+      if (this.player.isInVehicle && this.player.currentVehicle) {
+        const v = this.player.currentVehicle;
+        if (Math.abs(v.speed) > 2) {
+          this.exhaustTimer += delta;
+          if (this.exhaustTimer >= 0.05) {
+            this.exhaustTimer = 0;
+            const dir = v.direction; // forward
+            // Tailpipe sits behind the car; puff drifts further back.
+            const px = v.position.x - dir.x * 2.2;
+            const pz = v.position.z - dir.z * 2.2;
+            this.particles.emitExhaust(px, 0.4, pz, -dir.x * 1.2, -dir.z * 1.2);
+          }
+        }
+      }
+      this.particles.update(delta);
     }
 
     // Update collision system

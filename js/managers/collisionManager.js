@@ -210,11 +210,8 @@ export class CollisionManager {
           vehicle.handleCollision();
         }
 
-        if (wasMoving && this.game && this.game.soundManager) {
-          this.game.soundManager.playCrash();
-        }
-        if (wasMoving && this.game && this.game.shakeCamera) {
-          this.game.shakeCamera(0.4);
+        if (wasMoving) {
+          this.emitCrash(vehicle.position.x, vehicle.position.z, 0.4);
         }
       }
     }
@@ -334,9 +331,13 @@ export class CollisionManager {
       .subVectors(vehicle1.position, vehicle2.position)
       .normalize();
 
-    // Move vehicles apart
-    const pushDistance =
-      this.vehicleCollisionRadius * 2 - vehicle1.position.distanceTo(vehicle2.position);
+    // Push far enough apart to clear detection: use the SAME per-vehicle radius
+    // sum the detector uses, otherwise large vehicles settle inside detection
+    // range and re-collide every frame forever.
+    const minDistance =
+      (vehicle1.collisionRadius || this.vehicleCollisionRadius) +
+      (vehicle2.collisionRadius || this.vehicleCollisionRadius);
+    const pushDistance = minDistance - vehicle1.position.distanceTo(vehicle2.position);
 
     // Only push if they're actually overlapping
     if (pushDistance > 0) {
@@ -354,12 +355,13 @@ export class CollisionManager {
       if (vehicle1.speed) vehicle1.speed *= 0.5;
       if (vehicle2.speed) vehicle2.speed *= 0.5;
 
-      // Play crash sound + shake the camera if game exists
-      if (this.game && this.game.soundManager) {
-        this.game.soundManager.playCrash();
-      }
-      if (this.game && this.game.shakeCamera) {
-        this.game.shakeCamera(0.5);
+      // Only a "crash" if at least one vehicle was moving — otherwise this is
+      // just spawn overlap being resolved and shouldn't spark or make noise.
+      const moving = Math.abs(vehicle1.speed || 0) > 0.5 || Math.abs(vehicle2.speed || 0) > 0.5;
+      if (moving) {
+        const mx = (vehicle1.position.x + vehicle2.position.x) / 2;
+        const mz = (vehicle1.position.z + vehicle2.position.z) / 2;
+        this.emitCrash(mx, mz, 0.5);
       }
     }
   }
@@ -404,12 +406,22 @@ export class CollisionManager {
       }
     }
 
-    // Play crash sound + shake only for meaningful impacts
-    if (isMoving && this.game && this.game.soundManager) {
-      this.game.soundManager.playCrash();
+    // Sparks/sound/shake only for meaningful impacts.
+    if (isMoving) {
+      this.emitCrash(pedestrian.position.x, pedestrian.position.z, 0.7);
     }
-    if (isMoving && this.game && this.game.shakeCamera) {
-      this.game.shakeCamera(0.7);
+  }
+
+  /**
+   * Announce a crash on the event bus (Game reacts with sound, screen shake and
+   * spark particles). Falls back to nothing if there's no game/bus wired up.
+   * @param {number} x - Impact X
+   * @param {number} z - Impact Z
+   * @param {number} intensity - 0..1 crash strength
+   */
+  emitCrash(x, z, intensity) {
+    if (this.game && this.game.events) {
+      this.game.events.emit('crash', { x, z, intensity });
     }
   }
 
