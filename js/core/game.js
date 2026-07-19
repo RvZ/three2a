@@ -70,6 +70,9 @@ export class Game {
     // Paused state (freezes simulation; rendering continues).
     this.paused = false;
 
+    // Game-over state (freezes sim; waits for a restart).
+    this.gameOver = false;
+
     // Event bus decouples systems (collision -> HUD/sound) without back-refs.
     this.events = new EventBus();
 
@@ -418,8 +421,40 @@ export class Game {
     }
   }
 
+  /** End the game: freeze the sim, silence the engine, show the overlay. */
+  triggerGameOver() {
+    if (this.gameOver) return;
+    this.gameOver = true;
+    if (this.engineSound) {
+      this.engineSound.stop();
+      this.engineSound = null;
+    }
+    if (this.hud) this.hud.showGameOver(this.hud.score);
+    this.events.emit('playerDied', {});
+  }
+
+  /**
+   * Restart the game. A full in-place teardown/rebuild of the scene, DOM and
+   * managers is error-prone, so we reload the page for a guaranteed-clean
+   * state. `?seed=` in the URL is preserved by the reload.
+   */
+  restart() {
+    window.location.reload();
+  }
+
   update() {
     if (!this.isGameRunning) return;
+
+    // Game over: freeze the sim and wait for a restart.
+    if (this.gameOver) {
+      if (this.inputManager.restartPressed) {
+        this.inputManager.restartPressed = false;
+        this.restart();
+        return;
+      }
+      this.clock.getDelta(); // drain so delta doesn't pile up
+      return;
+    }
 
     // Edge-triggered pause toggle (P / Escape).
     if (this.inputManager.pauseTogglePressed) {

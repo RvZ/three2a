@@ -181,6 +181,52 @@ export class HUD {
     }
   }
 
+  /**
+   * Show the game-over overlay with the final score.
+   * @param {number} finalScore - Score to display
+   */
+  showGameOver(finalScore = 0) {
+    if (!this.gameOverOverlay) {
+      this.gameOverOverlay = DOMUtils.createElement('div', {
+        role: 'dialog',
+        'aria-modal': 'true',
+        'aria-label': 'Game over',
+        style: {
+          position: 'absolute',
+          inset: '0',
+          display: 'none',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'column',
+          gap: '14px',
+          background: 'rgba(0, 0, 0, 0.72)',
+          color: 'white',
+          fontFamily: "'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif",
+          textAlign: 'center',
+          zIndex: '2100',
+          pointerEvents: 'none',
+        },
+      });
+      const title = DOMUtils.createElement(
+        'div',
+        { style: { fontSize: '64px', fontWeight: 'bold', textShadow: '2px 2px 6px black' } },
+        'GAME OVER 💀',
+      );
+      this.gameOverScoreEl = DOMUtils.createElement('div', { style: { fontSize: '28px' } }, '');
+      const hint = DOMUtils.createElement(
+        'div',
+        { style: { fontSize: '20px', opacity: '0.85' } },
+        'Press R to play again',
+      );
+      this.gameOverOverlay.appendChild(title);
+      this.gameOverOverlay.appendChild(this.gameOverScoreEl);
+      this.gameOverOverlay.appendChild(hint);
+      document.body.appendChild(this.gameOverOverlay);
+    }
+    this.gameOverScoreEl.textContent = `Final score: ${finalScore}`;
+    this.gameOverOverlay.style.display = 'flex';
+  }
+
   updateLives() {
     this.livesElement.innerHTML = '❤️'.repeat(this.lives);
     // aria-label overrides the emoji so screen readers say "Lives: 3".

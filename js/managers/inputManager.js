@@ -18,6 +18,7 @@ export class InputManager {
     this.hornPressed = false;
     this.debugTogglePressed = false;
     this.pauseTogglePressed = false;
+    this.restartPressed = false;
 
     // Mouse state
     this.mouseX = 0;
@@ -72,6 +73,9 @@ export class InputManager {
       case 'p':
       case 'escape':
         this.pauseTogglePressed = true;
+        break;
+      case 'r':
+        this.restartPressed = true;
         break;
       case 'm':
         // Toggle sound (handled directly)
@@ -141,6 +145,7 @@ export class InputManager {
     this.hornPressed = false;
     this.debugTogglePressed = false;
     this.pauseTogglePressed = false;
+    this.restartPressed = false;
     this.mouseDown = false;
   }
 }

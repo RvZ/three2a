@@ -320,8 +320,9 @@ export class Player {
 
         // Check if game over
         if (game.hud.lives <= 0) {
-          game.hud.showMessage('GAME OVER! 💀', 5000);
-          // Could add game over logic here
+          if (typeof game.triggerGameOver === 'function') {
+            game.triggerGameOver();
+          }
         } else {
           // Respawn player
           this.respawn(game);
