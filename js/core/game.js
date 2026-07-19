@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { World } from './world.js';
 import { Rng } from '../utils/rng';
 import { setRng, DebugUtils } from '../utils/utils';
@@ -122,6 +126,24 @@ export class Game {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.1;
     document.body.appendChild(this.renderer.domElement);
+
+    // Post-processing: a bloom pass makes bright emissive surfaces (night
+    // windows, headlights, crash sparks, the sun) glow. A high threshold keeps
+    // ordinary daytime surfaces out of the bloom, and OutputPass applies tone
+    // mapping + sRGB after the (linear/HDR) bloom so colours aren't
+    // double-mapped.
+    this.composer = new EffectComposer(this.renderer);
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      0.8, // strength
+      0.4, // radius
+      1.0, // luminance threshold (only HDR-bright emissive blooms)
+    );
+    this.composer.addPass(this.bloomPass);
+    this.composer.addPass(new OutputPass());
+    this.composer.setPixelRatio(this.renderer.getPixelRatio());
+    this.composer.setSize(window.innerWidth, window.innerHeight);
 
     // Initialize sound manager first
     this.soundManager.init();
@@ -303,6 +325,7 @@ export class Game {
   onWindowResize() {
     this.updateCameraProjection();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    if (this.composer) this.composer.setSize(window.innerWidth, window.innerHeight);
   }
 
   /**
@@ -332,6 +355,10 @@ export class Game {
     if (this.particles) {
       this.particles.dispose();
       this.particles = null;
+    }
+    if (this.composer) {
+      this.composer.dispose();
+      this.composer = null;
     }
     if (this.engineSound) {
       this.engineSound.stop();
@@ -535,6 +562,11 @@ export class Game {
   }
 
   render() {
-    this.renderer.render(this.scene, this.camera);
+    // Bloom-enabled path; falls back to a direct render if the composer is gone.
+    if (this.composer) {
+      this.composer.render();
+    } else {
+      this.renderer.render(this.scene, this.camera);
+    }
   }
 }
