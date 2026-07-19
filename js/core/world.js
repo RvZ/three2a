@@ -33,7 +33,8 @@ export class World {
     // Create ground
     this.createGround(scene);
 
-    // Create grid (hidden by default, useful for debugging)
+    // Create the debug grid, hidden by default (toggled with the collision
+    // debug mode). Previously it was always visible, cluttering the scene.
     this.createGrid(scene);
 
     // Create city with roads, sidewalks and buildings
@@ -57,7 +58,14 @@ export class World {
   createGrid(scene) {
     const gridHelper = new THREE.GridHelper(this.gridSize, this.gridDivisions, 0xffffff, 0x888888);
     gridHelper.position.y = 0.01; // Slightly above ground to avoid z-fighting
+    gridHelper.visible = false; // Debug aid only; toggled by the debug key.
     scene.add(gridHelper);
+    this.gridHelper = gridHelper;
+  }
+
+  /** Show or hide the debug grid overlay. */
+  setGridVisible(visible) {
+    if (this.gridHelper) this.gridHelper.visible = visible;
   }
 
   createCity(scene) {

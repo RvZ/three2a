@@ -3,6 +3,7 @@ import { World } from './world.js';
 import { Rng } from '../utils/rng';
 import { setRng, DebugUtils } from '../utils/utils';
 import { EventBus } from './eventBus';
+import { DayNightCycle } from './dayNightCycle';
 import { Player } from '../entities/player.js';
 import { Vehicle } from '../entities/vehicle.js';
 import { HUD } from '../ui/hud.js';
@@ -223,22 +224,27 @@ export class Game {
   }
 
   setupLighting() {
-    // Ambient light
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
-    this.scene.add(ambientLight);
+    // Hemisphere light: soft sky/ground fill that reads well under filmic tone
+    // mapping (replaces the flat single AmbientLight).
+    const hemiLight = new THREE.HemisphereLight(0xbfd8ff, 0x554433, 0.65);
+    hemiLight.position.set(0, 100, 0);
+    this.scene.add(hemiLight);
+    this.hemiLight = hemiLight;
 
-    // Directional light (sun)
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    // Directional light (sun) — position/colour/intensity are driven by the
+    // day/night cycle.
+    const directionalLight = new THREE.DirectionalLight(0xfff2e0, 1.15);
     directionalLight.position.set(50, 100, 50);
     directionalLight.castShadow = true;
 
-    // Adjust shadow properties for better quality
+    // Shadow quality.
     directionalLight.shadow.mapSize.width = 2048;
     directionalLight.shadow.mapSize.height = 2048;
     directionalLight.shadow.camera.near = 0.5;
     directionalLight.shadow.camera.far = 500;
+    directionalLight.shadow.bias = -0.0004;
 
-    // Increase shadow camera size to cover more area
+    // Cover the whole visible area.
     const shadowSize = 100;
     directionalLight.shadow.camera.left = -shadowSize;
     directionalLight.shadow.camera.right = shadowSize;
@@ -246,6 +252,16 @@ export class Game {
     directionalLight.shadow.camera.bottom = -shadowSize;
 
     this.scene.add(directionalLight);
+    this.sunLight = directionalLight;
+
+    // Animate sky/sun/ambient/fog over a day/night cycle.
+    this.dayNight = new DayNightCycle({
+      scene: this.scene,
+      sun: directionalLight,
+      ambient: hemiLight,
+      worldRadius: 120,
+      dayLength: 120,
+    });
   }
 
   onWheel(event) {
@@ -335,6 +351,7 @@ export class Game {
     if (this.inputManager.debugTogglePressed) {
       this.inputManager.debugTogglePressed = false;
       const debugEnabled = this.collisionManager.toggleDebugMode();
+      this.world.setGridVisible(debugEnabled);
       this.hud.showMessage(`Collision Debug Mode: ${debugEnabled ? 'ON' : 'OFF'}`, 2000);
     }
 
@@ -375,6 +392,11 @@ export class Game {
 
     // Update world (pedestrians, etc.)
     this.world.update(delta);
+
+    // Advance the day/night cycle (sun, sky, fog, ambient).
+    if (this.dayNight) {
+      this.dayNight.update(delta);
+    }
 
     // Update collision system
     this.collisionManager.update();
