@@ -127,6 +127,28 @@ export const DOMUtils = {
   },
 };
 
+// Reused scratch objects so per-frame orientation math allocates nothing.
+const _rotationMatrix = new THREE.Matrix4();
+
+/**
+ * Point `direction` along the entity's forward axis rotated about Y.
+ *
+ * Entities differ only in which way is "forward" in model space (the player
+ * mesh faces -Z, vehicles face +Z), so callers pass `forwardZ`. This replaces
+ * the identical rotation math that used to be copy-pasted into each entity.
+ */
+export function orientDirection(
+  direction: THREE.Vector3,
+  rotationY: number,
+  forwardZ: 1 | -1,
+): THREE.Vector3 {
+  direction.set(0, 0, forwardZ);
+  _rotationMatrix.makeRotationY(rotationY);
+  direction.applyMatrix4(_rotationMatrix);
+  direction.normalize();
+  return direction;
+}
+
 // Three.js object utilities
 export const ObjectUtils = {
   /**

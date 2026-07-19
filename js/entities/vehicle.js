@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ObjectUtils, rand } from '../utils/utils';
+import { ObjectUtils, rand, orientDirection } from '../utils/utils';
 
 export class Vehicle {
   constructor(type = 'sedan') {
@@ -420,18 +420,8 @@ export class Vehicle {
 
   // Update the direction vector based on current rotation
   updateDirection() {
-    // Reset direction to forward (Z+)
-    this.direction.set(0, 0, 1);
-
-    // Create a rotation matrix from the current rotation
-    const rotationMatrix = new THREE.Matrix4();
-    rotationMatrix.makeRotationY(this.rotation.y);
-
-    // Apply rotation to direction vector
-    this.direction.applyMatrix4(rotationMatrix);
-
-    // Ensure it's normalized
-    this.direction.normalize();
+    // Vehicles face +Z in model space.
+    orientDirection(this.direction, this.rotation.y, 1);
   }
 
   // Handle collision by stopping and moving back slightly

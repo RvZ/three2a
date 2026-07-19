@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Person } from './person.js';
-import { DebugUtils } from '../utils/utils';
+import { DebugUtils, orientDirection } from '../utils/utils';
 
 export class Player {
   constructor() {
@@ -131,18 +131,8 @@ export class Player {
 
   // Update the direction vector based on current rotation
   updateDirection() {
-    // Reset direction to forward (-Z for player)
-    this.direction.set(0, 0, -1);
-
-    // Create a rotation matrix from the current rotation
-    const rotationMatrix = new THREE.Matrix4();
-    rotationMatrix.makeRotationY(this.rotation.y);
-
-    // Apply rotation to direction vector
-    this.direction.applyMatrix4(rotationMatrix);
-
-    // Ensure it's normalized
-    this.direction.normalize();
+    // The player mesh faces -Z in model space.
+    orientDirection(this.direction, this.rotation.y, -1);
   }
 
   updateVehicle(delta) {
