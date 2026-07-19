@@ -75,113 +75,90 @@ export class Person {
   }
 
   createHead() {
-    // Head
-    const headGeometry = new THREE.SphereGeometry(0.25, 16, 16);
-    const headMaterial = new THREE.MeshStandardMaterial({ color: this.options.skinColor });
-    const head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.set(0, 1.7, 0);
+    const skinMat = new THREE.MeshStandardMaterial({ color: this.options.skinColor, roughness: 0.75 });
+
+    // Neck.
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.11, 0.14, 10), skinMat);
+    neck.position.set(0, 1.72, 0);
+    this.mesh.add(neck);
+
+    // Head.
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 20, 16), skinMat);
+    head.position.set(0, 1.94, 0);
+    this.head = head;
     this.mesh.add(head);
 
-    // Hair
-    const hairGeometry = new THREE.SphereGeometry(0.26, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
-    const hairMaterial = new THREE.MeshStandardMaterial({ color: this.options.hairColor });
-    const hair = new THREE.Mesh(hairGeometry, hairMaterial);
-    hair.position.set(0, 1.7, 0);
-    hair.rotation.x = Math.PI;
+    // Hair cap (upper hemisphere).
+    const hair = new THREE.Mesh(
+      new THREE.SphereGeometry(0.255, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.6),
+      new THREE.MeshStandardMaterial({ color: this.options.hairColor, roughness: 0.9 }),
+    );
+    hair.position.set(0, 1.95, 0);
     this.mesh.add(hair);
 
-    // Eyes
-    const eyeGeometry = new THREE.SphereGeometry(0.05, 8, 8);
-    const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-    const pupilGeometry = new THREE.SphereGeometry(0.025, 8, 8);
-    const pupilMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
-
-    // Left eye
-    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-    leftEye.position.set(0.1, 1.7, 0.2);
-    this.mesh.add(leftEye);
-
-    const leftPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
-    leftPupil.position.set(0.1, 1.7, 0.24);
-    this.mesh.add(leftPupil);
-
-    // Right eye
-    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-    rightEye.position.set(-0.1, 1.7, 0.2);
-    this.mesh.add(rightEye);
-
-    const rightPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
-    rightPupil.position.set(-0.1, 1.7, 0.24);
-    this.mesh.add(rightPupil);
+    // Eyes.
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.4 });
+    const eyeGeo = new THREE.SphereGeometry(0.035, 8, 8);
+    for (const sx of [0.09, -0.09]) {
+      const eye = new THREE.Mesh(eyeGeo, eyeMat);
+      eye.position.set(sx, 1.96, 0.21);
+      this.mesh.add(eye);
+    }
   }
 
   createTorso() {
-    // Torso (shirt)
-    const torsoGeometry = new THREE.BoxGeometry(0.6, 0.6, 0.3);
-    const torsoMaterial = new THREE.MeshStandardMaterial({ color: this.options.shirtColor });
-    this.torso = new THREE.Mesh(torsoGeometry, torsoMaterial);
-    this.torso.position.set(0, 1.3, 0);
+    const torsoMat = new THREE.MeshStandardMaterial({ color: this.options.shirtColor, roughness: 0.85 });
+    this.torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.24, 0.42, 5, 14), torsoMat);
+    this.torso.position.set(0, 1.32, 0);
+    this.torso.scale.set(1, 1, 0.7); // flatten front-to-back
     this.mesh.add(this.torso);
   }
 
   createArms() {
-    // Arms
-    const armGeometry = new THREE.BoxGeometry(0.15, 0.6, 0.15);
-    const armMaterial = new THREE.MeshStandardMaterial({ color: this.options.shirtColor });
+    const sleeveMat = new THREE.MeshStandardMaterial({ color: this.options.shirtColor, roughness: 0.85 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: this.options.skinColor, roughness: 0.75 });
+    const armGeo = new THREE.CapsuleGeometry(0.085, 0.42, 4, 10);
+    const handGeo = new THREE.SphereGeometry(0.09, 10, 8);
 
-    // Left arm
-    this.leftArm = new THREE.Mesh(armGeometry, armMaterial);
-    this.leftArm.position.set(0.375, 1.3, 0);
-    this.mesh.add(this.leftArm);
-
-    // Right arm
-    this.rightArm = new THREE.Mesh(armGeometry, armMaterial);
-    this.rightArm.position.set(-0.375, 1.3, 0);
-    this.mesh.add(this.rightArm);
-
-    // Hands
-    const handGeometry = new THREE.SphereGeometry(0.08, 8, 8);
-    const handMaterial = new THREE.MeshStandardMaterial({ color: this.options.skinColor });
-
-    // Left hand
-    const leftHand = new THREE.Mesh(handGeometry, handMaterial);
-    leftHand.position.set(0.375, 1, 0);
-    this.mesh.add(leftHand);
-
-    // Right hand
-    const rightHand = new THREE.Mesh(handGeometry, handMaterial);
-    rightHand.position.set(-0.375, 1, 0);
-    this.mesh.add(rightHand);
+    // Each arm hangs from a shoulder pivot so the walk swing rotates from the
+    // shoulder, not the arm's midpoint.
+    const makeArm = (sx) => {
+      const pivot = new THREE.Group();
+      pivot.position.set(sx, 1.58, 0);
+      const arm = new THREE.Mesh(armGeo, sleeveMat);
+      arm.position.set(0, -0.3, 0);
+      pivot.add(arm);
+      const hand = new THREE.Mesh(handGeo, skinMat);
+      hand.position.set(0, -0.6, 0);
+      pivot.add(hand);
+      this.mesh.add(pivot);
+      return pivot;
+    };
+    this.leftArm = makeArm(0.32);
+    this.rightArm = makeArm(-0.32);
   }
 
   createLegs() {
-    // Legs (pants)
-    const legGeometry = new THREE.BoxGeometry(0.2, 0.7, 0.2);
-    const legMaterial = new THREE.MeshStandardMaterial({ color: this.options.pantsColor });
+    const legMat = new THREE.MeshStandardMaterial({ color: this.options.pantsColor, roughness: 0.85 });
+    const shoeMat = new THREE.MeshStandardMaterial({ color: this.options.shoesColor, roughness: 0.6 });
+    const legGeo = new THREE.CapsuleGeometry(0.12, 0.5, 4, 12);
+    const shoeGeo = new THREE.BoxGeometry(0.2, 0.13, 0.34);
 
-    // Left leg
-    this.leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-    this.leftLeg.position.set(0.15, 0.65, 0);
-    this.mesh.add(this.leftLeg);
-
-    // Right leg
-    this.rightLeg = new THREE.Mesh(legGeometry, legMaterial);
-    this.rightLeg.position.set(-0.15, 0.65, 0);
-    this.mesh.add(this.rightLeg);
-
-    // Shoes
-    const shoeGeometry = new THREE.BoxGeometry(0.2, 0.1, 0.3);
-    const shoeMaterial = new THREE.MeshStandardMaterial({ color: this.options.shoesColor });
-
-    // Left shoe
-    const leftShoe = new THREE.Mesh(shoeGeometry, shoeMaterial);
-    leftShoe.position.set(0.15, 0.25, 0.05);
-    this.mesh.add(leftShoe);
-
-    // Right shoe
-    const rightShoe = new THREE.Mesh(shoeGeometry, shoeMaterial);
-    rightShoe.position.set(-0.15, 0.25, 0.05);
-    this.mesh.add(rightShoe);
+    // Legs hang from hip pivots (see makeArm rationale).
+    const makeLeg = (sx) => {
+      const pivot = new THREE.Group();
+      pivot.position.set(sx, 0.9, 0);
+      const leg = new THREE.Mesh(legGeo, legMat);
+      leg.position.set(0, -0.38, 0);
+      pivot.add(leg);
+      const shoe = new THREE.Mesh(shoeGeo, shoeMat);
+      shoe.position.set(0, -0.74, 0.07);
+      pivot.add(shoe);
+      this.mesh.add(pivot);
+      return pivot;
+    };
+    this.leftLeg = makeLeg(0.15);
+    this.rightLeg = makeLeg(-0.15);
   }
 
   addPlayerIndicator() {
@@ -189,7 +166,7 @@ export class Person {
     const arrowGeometry = new THREE.ConeGeometry(0.1, 0.2, 4);
     const arrowMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
     const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
-    arrow.position.set(0, 2.1, 0);
+    arrow.position.set(0, 2.35, 0);
     this.mesh.add(arrow);
   }
 
