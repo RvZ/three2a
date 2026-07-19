@@ -28,6 +28,8 @@ jspm_packages/
 # Distribution / packaging
 dist/
 build/
+coverage/
+.vite/
 *.zip
 *.tar.gz
 

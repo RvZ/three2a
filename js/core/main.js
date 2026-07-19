@@ -6,9 +6,9 @@ game.init();
 
 // Start the game loop
 function animate() {
-    requestAnimationFrame(animate);
-    game.update();
-    game.render();
+  requestAnimationFrame(animate);
+  game.update();
+  game.render();
 }
 
-animate(); 
+animate();

@@ -18,6 +18,7 @@ You can play the game directly in your browser: [Play Now](#) (Add your hosted U
 ## Controls
 
 ### Desktop:
+
 - **WASD** or **Arrow Keys**: Move character/vehicle
 - **Space**: Enter/exit vehicle
 - **H**: Honk horn (when in vehicle)
@@ -26,6 +27,7 @@ You can play the game directly in your browser: [Play Now](#) (Add your hosted U
 - **Mouse Wheel**: Zoom in/out
 
 ### Mobile:
+
 - **Left Joystick**: Move character/vehicle
 - **Action Button**: Enter/exit vehicle
 - **Horn Button**: Honk horn (when in vehicle)
@@ -44,33 +46,44 @@ The game is built with a clean architecture that separates concerns:
 
 ### Prerequisites
 
+- Node.js 20+ and npm
 - Modern web browser with WebGL support
-- Local web server for development
 
 ### Running Locally
 
 1. Clone this repository
+
 ```
 git clone https://github.com/yourusername/gta2-style-game.git
+cd gta2-style-game
 ```
 
-2. Start a local web server in the project directory
-```
-# Using Python 3
-python -m http.server
-
-# Using Node.js
-npx serve
-```
-
-3. Open your browser and navigate to `http://localhost:8000` (or the port your server is using)
-
-### Testing & linting
+2. Install dependencies and start the Vite dev server
 
 ```
-npm test      # syntax-checks every module (no dependencies required)
-npm run lint  # runs ESLint (requires: npm install)
-npm run format
+npm install
+npm run dev
+```
+
+3. Open the URL Vite prints (defaults to `http://localhost:5173`). The dev
+   server has hot-module reload. `three` is bundled from `node_modules` — no
+   CDN required.
+
+### Building
+
+```
+npm run build     # typechecks, then produces an optimized bundle in dist/
+npm run preview   # serves the production build locally
+```
+
+### Testing, types & linting
+
+```
+npm run typecheck    # tsc --noEmit
+npm test             # Vitest unit tests
+npm run lint         # ESLint (flat config)
+npm run format       # Prettier (write); format:check to verify
+npm run e2e          # headless boot smoke test (needs a running preview server)
 ```
 
 ## License
@@ -80,4 +93,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Acknowledgments
 
 - Three.js for 3D rendering
-- nipple.js for mobile joystick controls 
+- nipple.js for mobile joystick controls

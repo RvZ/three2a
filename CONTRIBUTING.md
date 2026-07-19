@@ -11,6 +11,7 @@ Please be respectful and considerate of others when contributing to this project
 ### Reporting Bugs
 
 If you find a bug, please create an issue with the following information:
+
 - A clear, descriptive title
 - Steps to reproduce the bug
 - Expected behavior
@@ -21,6 +22,7 @@ If you find a bug, please create an issue with the following information:
 ### Suggesting Enhancements
 
 If you have an idea for an enhancement, please create an issue with:
+
 - A clear, descriptive title
 - A detailed description of the enhancement
 - Any relevant mockups or examples
@@ -36,11 +38,13 @@ If you have an idea for an enhancement, please create an issue with:
 ## Development Setup
 
 1. Clone the repository
+
 ```
 git clone https://github.com/yourusername/gta2-style-game.git
 ```
 
 2. Start a local web server in the project directory
+
 ```
 # Using Python 3
 python -m http.server
@@ -76,4 +80,4 @@ Please test your changes in multiple browsers if possible, especially if you're 
 
 If you add new features, please update the README.md file accordingly.
 
-Thank you for contributing! 
+Thank you for contributing!
