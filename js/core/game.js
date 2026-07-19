@@ -56,10 +56,14 @@ export class Game {
             1, 1000
         );
         
+        // Looking straight down makes the default up-vector (0,1,0) parallel to
+        // the view direction (a degenerate case for lookAt). Point "up" toward
+        // world -Z so the orientation is well-defined and stable.
+        this.camera.up.set(0, 0, -1);
+
         // Position camera directly above looking down
         this.camera.position.set(0, this.cameraHeight, 0);
         this.camera.lookAt(0, 0, 0);
-        this.camera.rotation.z = 0; // Ensure the camera is oriented correctly
         
         // Create renderer
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -112,10 +116,7 @@ export class Game {
         
         // Start the game
         this.isGameRunning = true;
-        
-        // Show welcome message with sound controls
-        this.hud.showMessage('Welcome! Use joystick to move, red button to enter/exit vehicles', 5000);
-        
+
         // Debug: Log player and vehicle positions
         console.log("Player position:", this.player.position);
         console.log("On sidewalk:", this.world.isOnSidewalk(this.player.position.x, this.player.position.z));
@@ -131,15 +132,14 @@ export class Game {
         
         // Get player position (or use default if not available yet)
         const playerPos = this.player ? this.player.position : new THREE.Vector3(0, 0, 0);
-        
-        // Road positions around the player
-        const roadPositions = [
-            { x: playerPos.x + 8, z: playerPos.z }, // Right of player
-            { x: playerPos.x, z: playerPos.z + 8 }, // In front of player
-            { x: playerPos.x - 8, z: playerPos.z }, // Left of player
-            { x: playerPos.x, z: playerPos.z - 8 }  // Behind player
-        ];
-        
+
+        // Place vehicles along the road nearest the player so they spawn on
+        // asphalt, spaced apart, rather than at fixed offsets that could overlap
+        // each other or sit inside buildings.
+        const roadPositions = this.world.getRoadSpawnPositions(
+            playerPos.x, playerPos.z, vehicleTypes.length
+        );
+
         // Clear existing vehicles
         this.vehicles = [];
         
@@ -231,11 +231,7 @@ export class Game {
         if (!this.isGameRunning) return;
         
         const delta = this.clock.getDelta();
-        
-        // Store previous position and movement state
-        const previousPosition = this.player.position.clone();
-        const wasMoving = this.player.moveForward || this.player.moveBackward;
-        
+
         // Update player movement flags from input manager
         this.player.moveForward = this.inputManager.moveForward;
         this.player.moveBackward = this.inputManager.moveBackward;
@@ -286,13 +282,11 @@ export class Game {
             // Don't reset the flag here to allow continuous honking
         }
         
-        // Check for debug mode toggle
-        if (this.inputManager.isKeyPressed('b') && !this.inputManager.keys.bPrevious) {
+        // Check for debug mode toggle (edge-triggered in the input manager)
+        if (this.inputManager.debugTogglePressed) {
+            this.inputManager.debugTogglePressed = false;
             const debugEnabled = this.collisionManager.toggleDebugMode();
             this.hud.showMessage(`Collision Debug Mode: ${debugEnabled ? 'ON' : 'OFF'}`, 2000);
-            this.inputManager.keys.bPrevious = true;
-        } else if (!this.inputManager.isKeyPressed('b')) {
-            this.inputManager.keys.bPrevious = false;
         }
         
         // Update player

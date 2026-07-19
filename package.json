@@ -2,10 +2,13 @@
   "name": "gta2-style-game",
   "version": "1.0.0",
   "description": "A top-down GTA-inspired game built with JavaScript and Three.js",
+  "type": "module",
   "main": "js/core/main.js",
   "scripts": {
     "start": "npx serve",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node scripts/smoke-test.mjs",
+    "lint": "eslint js scripts",
+    "format": "prettier --write \"**/*.{js,mjs,json,md}\""
   },
   "keywords": [
     "game",
@@ -20,6 +23,8 @@
     "three": "^0.160.0"
   },
   "devDependencies": {
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.0",
     "serve": "^14.2.1"
   }
-} 
+}

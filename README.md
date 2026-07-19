@@ -2,8 +2,6 @@
 
 A top-down GTA-inspired game built with JavaScript and Three.js. This project features a procedurally generated city with buildings, roads, vehicles, and pedestrians.
 
-![Game Screenshot](screenshot.png)
-
 ## Features
 
 - Procedurally generated city with buildings, roads, and sidewalks
@@ -22,6 +20,8 @@ You can play the game directly in your browser: [Play Now](#) (Add your hosted U
 ### Desktop:
 - **WASD** or **Arrow Keys**: Move character/vehicle
 - **Space**: Enter/exit vehicle
+- **H**: Honk horn (when in vehicle)
+- **M**: Mute/unmute sound
 - **B**: Toggle collision debug mode
 - **Mouse Wheel**: Zoom in/out
 
@@ -64,6 +64,14 @@ npx serve
 ```
 
 3. Open your browser and navigate to `http://localhost:8000` (or the port your server is using)
+
+### Testing & linting
+
+```
+npm test      # syntax-checks every module (no dependencies required)
+npm run lint  # runs ESLint (requires: npm install)
+npm run format
+```
 
 ## License
 

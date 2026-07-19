@@ -23,6 +23,9 @@ export class Player {
         
         // Vehicle interaction
         this.interactionRadius = 5; // Increased from 3 to 5 for easier vehicle entry
+
+        // Collision radius (pedestrian-sized)
+        this.collisionRadius = 0.5;
         
         // Player stats
         this.health = 100;
@@ -222,34 +225,51 @@ export class Player {
     
     exitVehicle() {
         if (!this.currentVehicle) return;
-        
-        // Position player next to vehicle based on vehicle's forward direction
-        const offset = new THREE.Vector3(0, 0, 0);
-        
-        // Get the vehicle's direction vector
-        const vehicleDirection = this.currentVehicle.direction.clone();
-        
-        // Create a perpendicular vector (to the right of the vehicle)
+
+        const vehicle = this.currentVehicle;
+
+        // Get the vehicle's direction and a perpendicular (right) vector
+        const vehicleDirection = vehicle.direction.clone();
         const rightVector = new THREE.Vector3().crossVectors(
-            vehicleDirection, 
+            vehicleDirection,
             new THREE.Vector3(0, 1, 0)
         ).normalize();
-        
-        // Position player to the right side of the vehicle
-        offset.copy(rightVector).multiplyScalar(2);
-        
-        // Apply offset to vehicle position
-        this.position.copy(this.currentVehicle.position).add(offset);
+
+        // Candidate exit offsets around the vehicle: right, left, front, back.
+        // Pick the first one that isn't inside a building so we never drop the
+        // player into a wall.
+        const candidates = [
+            rightVector.clone().multiplyScalar(2),
+            rightVector.clone().multiplyScalar(-2),
+            vehicleDirection.clone().multiplyScalar(3),
+            vehicleDirection.clone().multiplyScalar(-3)
+        ];
+
+        const base = new THREE.Vector3(vehicle.position.x, 0, vehicle.position.z);
+        let chosenOffset = candidates[0];
+
+        for (const offset of candidates) {
+            offset.y = 0;
+            this.position.copy(base).add(offset);
+            this.person.mesh.position.copy(this.position);
+            if (!this.checkCollision()) {
+                chosenOffset = offset;
+                break;
+            }
+        }
+
+        // Commit the chosen exit position
+        this.position.copy(base).add(chosenOffset);
         this.person.mesh.position.copy(this.position);
-        
+
         // Face the player toward the vehicle
-        this.rotation.y = Math.atan2(-offset.x, -offset.z);
+        this.rotation.y = Math.atan2(-chosenOffset.x, -chosenOffset.z);
         this.person.mesh.rotation.y = this.rotation.y;
-        
+
         // Update direction vector after rotation change
         this.updateDirection();
-        
-        this.currentVehicle.removeDriver();
+
+        vehicle.removeDriver();
         this.isInVehicle = false;
         this.currentVehicle = null;
         this.person.mesh.visible = true;
@@ -266,12 +286,7 @@ export class Player {
         
         // If no movement, nothing to do
         if (movement.lengthSq() < 0.0001) return;
-        
-        // Play collision sound
-        if (this.game && this.game.soundManager) {
-            this.game.soundManager.playCrash();
-        }
-        
+
         // Try to slide along walls by preserving movement in non-colliding directions
         
         // First, save current position
@@ -307,9 +322,12 @@ export class Player {
         this.person.mesh.position.copy(this.position);
     }
 
-    // Helper method to check for collisions at current position
+    // Helper method to check for collisions at the current position.
+    // Asks the collision manager whether this position overlaps any building.
     checkCollision() {
-        // This will be called by the collision system
+        if (this.game && this.game.collisionManager) {
+            return this.game.collisionManager.collidesWithBuildings(this);
+        }
         return false;
     }
     

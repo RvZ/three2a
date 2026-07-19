@@ -13,9 +13,10 @@ export class InputManager {
         this.moveLeft = false;
         this.moveRight = false;
         
-        // Action flags
+        // Action flags (edge-triggered: set once per physical key press)
         this.actionPressed = false;
         this.hornPressed = false;
+        this.debugTogglePressed = false;
         
         // Mouse state
         this.mouseX = 0;
@@ -43,26 +44,36 @@ export class InputManager {
     }
     
     handleKeyDown(event) {
-        // Store key state
-        this.keys[event.key.toLowerCase()] = true;
-        
+        const key = event.key.toLowerCase();
+
+        // Detect the up->down transition so held keys (which auto-repeat
+        // keydown events) don't fire one-shot actions on every repeat.
+        const wasDown = this.keys[key] === true;
+        this.keys[key] = true;
+
         // Update movement flags
         this.updateMovementFlags();
-        
+
+        // Held keys auto-repeat; only react to the initial press for one-shots
+        if (wasDown) return;
+
         // Handle special keys
-        switch (event.key.toLowerCase()) {
+        switch (key) {
             case ' ':
                 this.actionPressed = true;
                 break;
             case 'h':
                 this.hornPressed = true;
                 break;
+            case 'b':
+                this.debugTogglePressed = true;
+                break;
             case 'm':
-                // Toggle mute (handled directly)
+                // Toggle sound (handled directly)
                 if (this.game && this.game.soundManager) {
-                    const isMuted = this.game.soundManager.toggleMute();
+                    const soundEnabled = this.game.soundManager.toggleSound();
                     if (this.game.hud) {
-                        this.game.hud.showMessage(isMuted ? 'Sound muted 🔇' : 'Sound unmuted 🔊', 2000);
+                        this.game.hud.showMessage(soundEnabled ? 'Sound unmuted 🔊' : 'Sound muted 🔇', 2000);
                     }
                 }
                 break;
@@ -114,30 +125,6 @@ export class InputManager {
         return this.keys[key.toLowerCase()] === true;
     }
     
-    // Get movement direction as a normalized vector
-    getMovementDirection() {
-        const direction = { x: 0, z: 0 };
-        
-        if (this.moveForward) direction.z -= 1;
-        if (this.moveBackward) direction.z += 1;
-        if (this.moveLeft) direction.x -= 1;
-        if (this.moveRight) direction.x += 1;
-        
-        // Normalize if moving diagonally
-        const length = Math.sqrt(direction.x * direction.x + direction.z * direction.z);
-        if (length > 0) {
-            direction.x /= length;
-            direction.z /= length;
-        }
-        
-        return direction;
-    }
-    
-    // Check if any movement key is pressed
-    isMoving() {
-        return this.moveForward || this.moveBackward || this.moveLeft || this.moveRight;
-    }
-    
     // Reset all input states
     reset() {
         this.keys = {};
@@ -147,6 +134,7 @@ export class InputManager {
         this.moveRight = false;
         this.actionPressed = false;
         this.hornPressed = false;
+        this.debugTogglePressed = false;
         this.mouseDown = false;
     }
 } 

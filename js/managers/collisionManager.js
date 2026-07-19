@@ -30,9 +30,9 @@ export class CollisionManager {
     registerVehicle(vehicle) {
         if (!this.vehicles.includes(vehicle)) {
             this.vehicles.push(vehicle);
-            
+
             if (this.debugMode) {
-                this.addDebugHelper(vehicle, this.vehicleCollisionRadius, 0xff0000);
+                this.addDebugHelper(vehicle, vehicle.collisionRadius || this.vehicleCollisionRadius, 0xff0000);
             }
         }
     }
@@ -44,9 +44,9 @@ export class CollisionManager {
     registerPedestrian(pedestrian) {
         if (!this.pedestrians.includes(pedestrian)) {
             this.pedestrians.push(pedestrian);
-            
+
             if (this.debugMode) {
-                this.addDebugHelper(pedestrian, this.pedestrianCollisionRadius, 0x00ff00);
+                this.addDebugHelper(pedestrian, pedestrian.collisionRadius || this.pedestrianCollisionRadius, 0x00ff00);
             }
         }
     }
@@ -57,6 +57,21 @@ export class CollisionManager {
      */
     registerBuilding(building) {
         if (!this.buildings.includes(building)) {
+            // Buildings are static, so compute their bounding box once and cache
+            // it (plus a broad-phase circle) instead of recomputing every frame.
+            if (building.mesh) {
+                const box = new THREE.Box3().setFromObject(building.mesh);
+                const size = new THREE.Vector3();
+                const center = new THREE.Vector3();
+                box.getSize(size);
+                box.getCenter(center);
+
+                building._collisionBox = box;
+                building._collisionCenter = center;
+                // Half the XZ diagonal — a circle that fully contains the footprint
+                building._broadRadius = Math.sqrt(size.x * size.x + size.z * size.z) / 2;
+            }
+
             this.buildings.push(building);
         }
     }
@@ -115,9 +130,13 @@ export class CollisionManager {
                 
                 // Calculate distance between vehicles
                 const distance = vehicle1.position.distanceTo(vehicle2.position);
-                
+
+                // Sum of each vehicle's own radius (trucks/vans are larger)
+                const minDistance = (vehicle1.collisionRadius || this.vehicleCollisionRadius) +
+                    (vehicle2.collisionRadius || this.vehicleCollisionRadius);
+
                 // Check if collision occurred
-                if (distance < this.vehicleCollisionRadius * 2) {
+                if (distance < minDistance) {
                     // Handle collision
                     this.handleVehicleCollision(vehicle1, vehicle2);
                 }
@@ -139,9 +158,12 @@ export class CollisionManager {
                 
                 // Calculate distance between vehicle and pedestrian
                 const distance = vehicle.position.distanceTo(pedestrian.position);
-                
+
+                const minDistance = (vehicle.collisionRadius || this.vehicleCollisionRadius) +
+                    (pedestrian.collisionRadius || this.pedestrianCollisionRadius);
+
                 // Check if collision occurred
-                if (distance < this.vehicleCollisionRadius + this.pedestrianCollisionRadius) {
+                if (distance < minDistance) {
                     // Handle collision
                     this.handleVehiclePedestrianCollision(vehicle, pedestrian);
                 }
@@ -156,27 +178,18 @@ export class CollisionManager {
         for (const vehicle of this.vehicles) {
             // Skip if vehicle has no position
             if (!vehicle.position) continue;
-            
-            for (const building of this.buildings) {
-                // Skip if building has no mesh
-                if (!building.mesh) continue;
-                
-                // Check if vehicle is colliding with building
-                if (this.isCollidingWithBuilding(vehicle, building)) {
-                    // Handle collision
-                    this.handleVehicleBuildingCollision(vehicle, building);
+
+            if (this.collidesWithBuildings(vehicle)) {
+                // Only treat it as a "crash" (sound) if the vehicle was actually moving,
+                // so parked cars touching a wall don't spam the crash sound.
+                const wasMoving = Math.abs(vehicle.speed || 0) > 0.5;
+
+                if (typeof vehicle.handleCollision === 'function') {
+                    vehicle.handleCollision();
                 }
-            }
-            
-            // Also check obstacles
-            for (const obstacle of this.obstacles) {
-                // Skip if obstacle has no mesh
-                if (!obstacle.mesh) continue;
-                
-                // Check if vehicle is colliding with obstacle
-                if (this.isCollidingWithObstacle(vehicle, obstacle)) {
-                    // Handle collision
-                    this.handleVehicleObstacleCollision(vehicle, obstacle);
+
+                if (wasMoving && this.game && this.game.soundManager) {
+                    this.game.soundManager.playCrash();
                 }
             }
         }
@@ -189,30 +202,50 @@ export class CollisionManager {
         for (const pedestrian of this.pedestrians) {
             // Skip if pedestrian has no position
             if (!pedestrian.position) continue;
-            
-            for (const building of this.buildings) {
-                // Skip if building has no mesh
-                if (!building.mesh) continue;
-                
-                // Check if pedestrian is colliding with building
-                if (this.isCollidingWithBuilding(pedestrian, building)) {
-                    // Handle collision
-                    this.handlePedestrianBuildingCollision(pedestrian, building);
-                }
-            }
-            
-            // Also check obstacles
-            for (const obstacle of this.obstacles) {
-                // Skip if obstacle has no mesh
-                if (!obstacle.mesh) continue;
-                
-                // Check if pedestrian is colliding with obstacle
-                if (this.isCollidingWithObstacle(pedestrian, obstacle)) {
-                    // Handle collision
-                    this.handlePedestrianObstacleCollision(pedestrian, obstacle);
+
+            if (this.collidesWithBuildings(pedestrian)) {
+                // Each entity resolves its own collision: the player slides along
+                // walls, NPCs revert and pick a new target.
+                if (typeof pedestrian.handleCollision === 'function') {
+                    pedestrian.handleCollision();
+                } else if (pedestrian.previousPosition) {
+                    pedestrian.position.copy(pedestrian.previousPosition);
+                    if (pedestrian.mesh) pedestrian.mesh.position.copy(pedestrian.position);
                 }
             }
         }
+    }
+
+    /**
+     * Test whether an entity currently overlaps any building or obstacle.
+     * Uses a cheap broad-phase circle test before the precise box test.
+     * @param {Object} entity - Entity with a `position` and `collisionRadius`
+     * @returns {boolean} True if overlapping a building/obstacle
+     */
+    collidesWithBuildings(entity) {
+        if (!entity || !entity.position) return false;
+
+        const radius = entity.collisionRadius || this.pedestrianCollisionRadius;
+
+        for (const building of this.buildings) {
+            if (!building._collisionBox) continue;
+
+            // Broad-phase: skip buildings whose footprint circle is out of reach
+            const dx = entity.position.x - building._collisionCenter.x;
+            const dz = entity.position.z - building._collisionCenter.z;
+            const reach = radius + building._broadRadius;
+            if (dx * dx + dz * dz > reach * reach) continue;
+
+            // Narrow-phase: precise box test
+            if (this.isCollidingWithBuilding(entity, building)) return true;
+        }
+
+        for (const obstacle of this.obstacles) {
+            if (!obstacle.mesh) continue;
+            if (this.isCollidingWithObstacle(entity, obstacle)) return true;
+        }
+
+        return false;
     }
     
     /**
@@ -222,18 +255,16 @@ export class CollisionManager {
      * @returns {boolean} True if colliding, false otherwise
      */
     isCollidingWithBuilding(entity, building) {
-        // Simple box collision check
-        if (!building.mesh || !building.mesh.geometry || !building.mesh.position) {
+        // Use the cached bounding box computed at registration time
+        const buildingBox = building._collisionBox;
+        if (!buildingBox || !entity.position) {
             return false;
         }
-        
-        // Get building dimensions
-        const buildingBox = new THREE.Box3().setFromObject(building.mesh);
-        
-        // Create a slightly smaller box for the entity
-        const entityRadius = entity === this.game.player ? 
-            this.pedestrianCollisionRadius : this.vehicleCollisionRadius;
-            
+
+        // Use the entity's own collision radius (falls back by group)
+        const entityRadius = entity.collisionRadius ||
+            (this.vehicles.includes(entity) ? this.vehicleCollisionRadius : this.pedestrianCollisionRadius);
+
         const entityBox = new THREE.Box3();
         entityBox.min.set(
             entity.position.x - entityRadius,
@@ -259,9 +290,9 @@ export class CollisionManager {
     isCollidingWithObstacle(entity, obstacle) {
         // Simple distance check for now
         const distance = entity.position.distanceTo(obstacle.position);
-        const entityRadius = entity === this.game.player ? 
-            this.pedestrianCollisionRadius : this.vehicleCollisionRadius;
-        
+        const entityRadius = entity.collisionRadius ||
+            (this.vehicles.includes(entity) ? this.vehicleCollisionRadius : this.pedestrianCollisionRadius);
+
         return distance < entityRadius + obstacle.radius;
     }
     
@@ -312,96 +343,66 @@ export class CollisionManager {
     handleVehiclePedestrianCollision(vehicle, pedestrian) {
         // Check if pedestrian is the player
         const isPlayer = pedestrian === this.game.player;
-        
+
         // Calculate collision response
         const direction = new THREE.Vector3().subVectors(
             pedestrian.position,
             vehicle.position
         ).normalize();
-        
+
         // Push pedestrian away from vehicle
         const pushDistance = 1.0;
         pedestrian.position.add(direction.clone().multiplyScalar(pushDistance));
-        
+
         // Update mesh position
         if (pedestrian.mesh) pedestrian.mesh.position.copy(pedestrian.position);
-        
+
+        const speed = Math.abs(vehicle.speed || 0);
+        const isMoving = speed > 0.5;
+
         // Apply damage to pedestrian
         if (isPlayer) {
             // Player takes damage based on vehicle speed
-            const damage = Math.abs(vehicle.speed) * 5;
-            pedestrian.takeDamage(damage, this.game);
-        } else if (pedestrian.takeDamage) {
-            // NPC pedestrian takes damage
-            pedestrian.takeDamage(100); // Instant kill for NPCs
+            const damage = speed * 5;
+            if (damage > 0) pedestrian.takeDamage(damage, this.game);
+        } else if (isMoving && pedestrian.takeDamage && !pedestrian.isDead) {
+            // A moving vehicle kills an NPC pedestrian
+            const killed = pedestrian.takeDamage(100);
+            if (killed) {
+                this.killPedestrian(pedestrian);
+                if (this.game && this.game.hud) {
+                    this.game.hud.addScore(50);
+                }
+            }
         }
-        
-        // Play crash sound if game exists
-        if (this.game && this.game.soundManager) {
+
+        // Play crash sound only for meaningful impacts
+        if (isMoving && this.game && this.game.soundManager) {
             this.game.soundManager.playCrash();
         }
     }
-    
+
     /**
-     * Handle a collision between a vehicle and a building
-     * @param {Object} vehicle - The vehicle
-     * @param {Object} building - The building
+     * Remove a dead NPC pedestrian from the world and free its resources.
+     * @param {Object} pedestrian - The pedestrian to remove
      */
-    handleVehicleBuildingCollision(vehicle, building) {
-        // Move vehicle back to previous position
-        if (vehicle.previousPosition) {
-            vehicle.position.copy(vehicle.previousPosition);
-            
-            // Update mesh position
-            if (vehicle.mesh) vehicle.mesh.position.copy(vehicle.position);
+    killPedestrian(pedestrian) {
+        // Stop tracking it for collisions
+        this.unregisterEntity(pedestrian);
+
+        // Remove it from the world's update list so it stops animating/moving
+        if (this.game && this.game.world && Array.isArray(this.game.world.pedestrians)) {
+            this.game.world.pedestrians = this.game.world.pedestrians.filter(p => p !== pedestrian);
         }
-        
-        // Stop the vehicle
-        if (vehicle.speed !== undefined) {
-            vehicle.speed = 0;
-        }
-        
-        // Play crash sound if game exists
-        if (this.game && this.game.soundManager) {
-            this.game.soundManager.playCrash();
+
+        // Free GPU resources / remove mesh from scene
+        if (typeof pedestrian.dispose === 'function') {
+            pedestrian.dispose();
+        } else if (pedestrian.mesh && pedestrian.mesh.parent) {
+            pedestrian.mesh.parent.remove(pedestrian.mesh);
         }
     }
-    
-    /**
-     * Handle a collision between a vehicle and an obstacle
-     * @param {Object} vehicle - The vehicle
-     * @param {Object} obstacle - The obstacle
-     */
-    handleVehicleObstacleCollision(vehicle, obstacle) {
-        // Similar to building collision
-        this.handleVehicleBuildingCollision(vehicle, obstacle);
-    }
-    
-    /**
-     * Handle a collision between a pedestrian and a building
-     * @param {Object} pedestrian - The pedestrian
-     * @param {Object} building - The building
-     */
-    handlePedestrianBuildingCollision(pedestrian, building) {
-        // Move pedestrian back to previous position
-        if (pedestrian.previousPosition) {
-            pedestrian.position.copy(pedestrian.previousPosition);
-            
-            // Update mesh position
-            if (pedestrian.mesh) pedestrian.mesh.position.copy(pedestrian.position);
-        }
-    }
-    
-    /**
-     * Handle a collision between a pedestrian and an obstacle
-     * @param {Object} pedestrian - The pedestrian
-     * @param {Object} obstacle - The obstacle
-     */
-    handlePedestrianObstacleCollision(pedestrian, obstacle) {
-        // Similar to building collision
-        this.handlePedestrianBuildingCollision(pedestrian, obstacle);
-    }
-    
+
     /**
      * Add a debug helper for an entity
      * @param {Object} entity - The entity to add a helper for
@@ -478,11 +479,11 @@ export class CollisionManager {
         if (this.debugMode) {
             // Add debug helpers for all entities
             for (const vehicle of this.vehicles) {
-                this.addDebugHelper(vehicle, this.vehicleCollisionRadius, 0xff0000);
+                this.addDebugHelper(vehicle, vehicle.collisionRadius || this.vehicleCollisionRadius, 0xff0000);
             }
-            
+
             for (const pedestrian of this.pedestrians) {
-                this.addDebugHelper(pedestrian, this.pedestrianCollisionRadius, 0x00ff00);
+                this.addDebugHelper(pedestrian, pedestrian.collisionRadius || this.pedestrianCollisionRadius, 0x00ff00);
             }
         } else {
             // Remove all debug helpers

@@ -157,6 +157,45 @@ export const DOMUtils = {
     }
 };
 
+// Three.js object utilities
+export const ObjectUtils = {
+    /**
+     * Recursively dispose of an Object3D's geometries, materials and textures
+     * and detach it from its parent. Prevents GPU memory leaks when entities
+     * are removed from the scene.
+     * @param {THREE.Object3D} object - The object to dispose
+     */
+    dispose: (object) => {
+        if (!object) return;
+
+        object.traverse((child) => {
+            if (child.geometry && typeof child.geometry.dispose === 'function') {
+                child.geometry.dispose();
+            }
+
+            if (child.material) {
+                const materials = Array.isArray(child.material) ? child.material : [child.material];
+                for (const material of materials) {
+                    // Dispose any texture maps referenced by the material
+                    for (const key in material) {
+                        const value = material[key];
+                        if (value && value.isTexture && typeof value.dispose === 'function') {
+                            value.dispose();
+                        }
+                    }
+                    if (typeof material.dispose === 'function') {
+                        material.dispose();
+                    }
+                }
+            }
+        });
+
+        if (object.parent) {
+            object.parent.remove(object);
+        }
+    }
+};
+
 // Debug utilities
 export const DebugUtils = {
     /**

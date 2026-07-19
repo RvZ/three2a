@@ -7,16 +7,21 @@ import { TextureGenerator } from './textureGenerator.js';
 export class CityGenerator {
     constructor(world) {
         this.world = world;
+        this.game = null;
         this.buildings = [];
         this.roads = [];
         this.sidewalks = [];
         this.pedestrians = [];
     }
-    
+
     /**
      * Create a complete city with roads, buildings, and other elements
      */
-    createCity(scene, totalBlockSize, roadWidth, sidewalkWidth, citySize) {
+    createCity(scene, totalBlockSize, roadWidth, sidewalkWidth, citySize, game = null) {
+        // Store the game reference so generated entities can be registered
+        // with the collision system.
+        this.game = game;
+
         // Create road network
         this.createRoadNetwork(scene, totalBlockSize, roadWidth, sidewalkWidth, citySize);
         
@@ -356,8 +361,8 @@ export class CityGenerator {
             this.buildings.push(building);
             
             // Register with collision system if available
-            if (window.game && window.game.collisionManager) {
-                window.game.collisionManager.registerBuilding(building);
+            if (this.game && this.game.collisionManager) {
+                this.game.collisionManager.registerBuilding(building);
             }
         }
     }
@@ -453,8 +458,8 @@ export class CityGenerator {
             vehicle.mesh.rotation.y = position.rotation;
             
             // Register with collision system if available
-            if (window.game && window.game.collisionManager) {
-                window.game.collisionManager.registerVehicle(vehicle);
+            if (this.game && this.game.collisionManager) {
+                this.game.collisionManager.registerVehicle(vehicle);
             }
         }
     }
@@ -524,8 +529,8 @@ export class CityGenerator {
             this.pedestrians.push(person);
             
             // Register with collision system if available
-            if (window.game && window.game.collisionManager) {
-                window.game.collisionManager.registerPedestrian(person);
+            if (this.game && this.game.collisionManager) {
+                this.game.collisionManager.registerPedestrian(person);
             }
         }
     }

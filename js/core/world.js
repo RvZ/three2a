@@ -23,20 +23,22 @@ export class World {
         
         // City generator
         this.cityGenerator = new CityGenerator(this);
+
+        // Set in init()
+        this.game = null;
     }
     
     init(scene, game = null) {
-        // Store game reference globally for building registration
-        if (game) {
-            window.game = game;
-        }
-        
+        // Keep a reference to the game so generated entities can be registered
+        // with the collision system (no global needed).
+        this.game = game;
+
         // Create ground
         this.createGround(scene);
-        
+
         // Create grid (hidden by default, useful for debugging)
         this.createGrid(scene);
-        
+
         // Create city with roads, sidewalks and buildings
         this.createCity(scene);
     }
@@ -67,7 +69,7 @@ export class World {
         this.totalBlockSize = totalBlockSize;
         
         // Use the city generator to create the city
-        this.cityGenerator.createCity(scene, this.totalBlockSize, this.roadWidth, this.sidewalkWidth, this.citySize);
+        this.cityGenerator.createCity(scene, this.totalBlockSize, this.roadWidth, this.sidewalkWidth, this.citySize, this.game);
         
         // Get references to created elements
         this.roads = this.cityGenerator.roads;
@@ -159,6 +161,41 @@ export class World {
         };
     }
     
+    /**
+     * Get a set of spawn positions lined up along the road nearest to (x, z).
+     * Used to place the player's starting vehicles on an actual road instead of
+     * at fixed offsets that could land inside buildings or overlap each other.
+     * @param {number} x - Reference X (usually the player's)
+     * @param {number} z - Reference Z (usually the player's)
+     * @param {number} count - How many positions to return
+     * @param {number} spacing - Distance between adjacent vehicles
+     * @returns {Array<{x:number, z:number}>} Positions on the nearest road
+     */
+    getRoadSpawnPositions(x, z, count, spacing = 5) {
+        if (!this.totalBlockSize) {
+            this.totalBlockSize = this.blockSize + this.roadWidth;
+        }
+
+        const half = (this.citySize * this.totalBlockSize) / 2;
+
+        // Snap Z to the nearest road centerline (roads sit at multiples of the
+        // block size, offset so the grid is centered on the origin).
+        let k = Math.round((z + half) / this.totalBlockSize);
+        k = Math.max(0, Math.min(this.citySize, k));
+        const roadZ = k * this.totalBlockSize - half;
+
+        // Line the vehicles up along the road, centered on the reference X and
+        // clamped to stay inside the city bounds.
+        const positions = [];
+        const startX = x - ((count - 1) * spacing) / 2;
+        for (let i = 0; i < count; i++) {
+            const px = Math.max(-half + 2, Math.min(half - 2, startX + i * spacing));
+            positions.push({ x: px, z: roadZ });
+        }
+
+        return positions;
+    }
+
     /**
      * Check if a position is on a sidewalk
      * @param {number} x - X coordinate to check

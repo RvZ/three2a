@@ -1,5 +1,10 @@
 # Bug Investigation & Improvement Plan
 
+> **Status:** All findings below (C1–C3, H1–H4, M1–M4, L1–L9) have been
+> implemented. This document is kept as the design record / rationale for the
+> changes. A headless smoke test (`npm test`) and a full browser boot test were
+> run after the fixes with no runtime errors.
+
 A code review of the GTA‑2‑style Three.js game. Findings are grouped by
 severity, each with the root cause, the concrete effect in‑game, and a
 proposed fix. A phased plan follows at the end.

@@ -1,10 +1,14 @@
 import * as THREE from 'three';
+import { ObjectUtils } from '../utils/utils.js';
 
 export class Building {
     constructor(width = 5, height = 10, depth = 5) {
         this.width = width;
         this.height = height;
         this.depth = depth;
+        // All of a building's parts live under this group so the whole
+        // structure can be collision-tested and disposed as one object.
+        this.group = null;
         this.mesh = null;
         this.type = this.determineType();
     }
@@ -23,30 +27,37 @@ export class Building {
     }
     
     init(scene, x = 0, z = 0) {
-        // Create building based on type
+        // Create a group to hold all parts of this building
+        this.group = new THREE.Group();
+
+        // Create building based on type (parts are added to this.group)
         switch (this.type) {
             case 'skyscraper':
-                this.createSkyscraper(scene, x, z);
+                this.createSkyscraper(x, z);
                 break;
             case 'office':
-                this.createOfficeBuilding(scene, x, z);
+                this.createOfficeBuilding(x, z);
                 break;
             case 'apartment':
-                this.createApartmentBuilding(scene, x, z);
+                this.createApartmentBuilding(x, z);
                 break;
             case 'house':
-                this.createHouse(scene, x, z);
+                this.createHouse(x, z);
                 break;
             default:
-                this.createBasicBuilding(scene, x, z);
+                this.createBasicBuilding(x, z);
         }
+
+        // Add the whole building to the scene and expose it as the collision mesh
+        scene.add(this.group);
+        this.mesh = this.group;
     }
     
-    createSkyscraper(scene, x, z) {
+    createSkyscraper(x, z) {
         // Create a skyscraper with a more complex shape
         const baseWidth = this.width;
         const baseDepth = this.depth;
-        
+
         // Base of the skyscraper (wider)
         const baseGeometry = new THREE.BoxGeometry(baseWidth, Math.min(5, this.height * 0.2), baseDepth);
         const baseMaterial = this.createBuildingMaterial(0.6, 0.2, 0.4); // Darker for base
@@ -54,21 +65,21 @@ export class Building {
         base.position.set(x, Math.min(5, this.height * 0.2) / 2, z);
         base.castShadow = true;
         base.receiveShadow = true;
-        scene.add(base);
-        
+        this.group.add(base);
+
         // Main tower (narrower)
         const towerWidth = baseWidth * 0.8;
         const towerDepth = baseDepth * 0.8;
         const towerHeight = this.height - Math.min(5, this.height * 0.2);
-        
+
         const towerGeometry = new THREE.BoxGeometry(towerWidth, towerHeight, towerDepth);
         const towerMaterial = this.createBuildingMaterial(0.6, 0.1, 0.7); // Lighter for tower
         const tower = new THREE.Mesh(towerGeometry, towerMaterial);
         tower.position.set(x, Math.min(5, this.height * 0.2) + towerHeight / 2, z);
         tower.castShadow = true;
         tower.receiveShadow = true;
-        scene.add(tower);
-        
+        this.group.add(tower);
+
         // Add antenna or spire to top
         if (Math.random() > 0.5) {
             const antennaGeometry = new THREE.CylinderGeometry(0, 0.2, 2, 4);
@@ -76,41 +87,39 @@ export class Building {
             const antenna = new THREE.Mesh(antennaGeometry, antennaMaterial);
             antenna.position.set(x, Math.min(5, this.height * 0.2) + towerHeight + 1, z);
             antenna.castShadow = true;
-            scene.add(antenna);
+            this.group.add(antenna);
         }
-        
-        this.mesh = tower; // Set main mesh for reference
     }
-    
-    createOfficeBuilding(scene, x, z) {
+
+    createOfficeBuilding(x, z) {
         // Create a standard office building with windows
         const geometry = new THREE.BoxGeometry(this.width, this.height, this.depth);
         const material = this.createBuildingMaterial(0.6, 0.1, 0.6);
-        this.mesh = new THREE.Mesh(geometry, material);
-        this.mesh.position.set(x, this.height / 2, z);
-        this.mesh.castShadow = true;
-        this.mesh.receiveShadow = true;
-        scene.add(this.mesh);
-        
+        const office = new THREE.Mesh(geometry, material);
+        office.position.set(x, this.height / 2, z);
+        office.castShadow = true;
+        office.receiveShadow = true;
+        this.group.add(office);
+
         // Add roof structures (AC units, etc.)
-        this.addRoofDetails(scene, x, z);
+        this.addRoofDetails(x, z);
     }
-    
-    createApartmentBuilding(scene, x, z) {
+
+    createApartmentBuilding(x, z) {
         // Create an apartment building with balconies
         const mainGeometry = new THREE.BoxGeometry(this.width, this.height, this.depth);
         const mainMaterial = this.createBuildingMaterial(0.1, 0.2, 0.5);
-        this.mesh = new THREE.Mesh(mainGeometry, mainMaterial);
-        this.mesh.position.set(x, this.height / 2, z);
-        this.mesh.castShadow = true;
-        this.mesh.receiveShadow = true;
-        scene.add(this.mesh);
-        
+        const apartment = new THREE.Mesh(mainGeometry, mainMaterial);
+        apartment.position.set(x, this.height / 2, z);
+        apartment.castShadow = true;
+        apartment.receiveShadow = true;
+        this.group.add(apartment);
+
         // Add balconies
-        this.addBalconies(scene, x, z);
+        this.addBalconies(x, z);
     }
-    
-    createHouse(scene, x, z) {
+
+    createHouse(x, z) {
         // Create a house with a pitched roof
         // Main structure
         const baseGeometry = new THREE.BoxGeometry(this.width, this.height * 0.7, this.depth);
@@ -119,16 +128,16 @@ export class Building {
         base.position.set(x, this.height * 0.7 / 2, z);
         base.castShadow = true;
         base.receiveShadow = true;
-        scene.add(base);
-        
+        this.group.add(base);
+
         // Roof
         const roofHeight = this.height * 0.3;
         const roofGeometry = new THREE.ConeGeometry(
-            Math.max(this.width, this.depth) * 0.7, 
-            roofHeight, 
+            Math.max(this.width, this.depth) * 0.7,
+            roofHeight,
             4
         );
-        const roofMaterial = new THREE.MeshStandardMaterial({ 
+        const roofMaterial = new THREE.MeshStandardMaterial({
             color: new THREE.Color().setHSL(0.05, 0.5, 0.3),
             roughness: 0.8,
             metalness: 0.1
@@ -137,23 +146,21 @@ export class Building {
         roof.position.set(x, this.height * 0.7 + roofHeight / 2, z);
         roof.rotation.y = Math.PI / 4; // Rotate to align with base
         roof.castShadow = true;
-        scene.add(roof);
-        
-        this.mesh = base; // Set main mesh for reference
+        this.group.add(roof);
     }
-    
-    createBasicBuilding(scene, x, z) {
+
+    createBasicBuilding(x, z) {
         // Fallback to basic building
         const geometry = new THREE.BoxGeometry(this.width, this.height, this.depth);
         const material = this.createBuildingMaterial();
-        this.mesh = new THREE.Mesh(geometry, material);
-        this.mesh.position.set(x, this.height / 2, z);
-        this.mesh.castShadow = true;
-        this.mesh.receiveShadow = true;
-        scene.add(this.mesh);
+        const basic = new THREE.Mesh(geometry, material);
+        basic.position.set(x, this.height / 2, z);
+        basic.castShadow = true;
+        basic.receiveShadow = true;
+        this.group.add(basic);
     }
-    
-    addRoofDetails(scene, x, z) {
+
+    addRoofDetails(x, z) {
         // Add AC units, water tanks, etc. to roof
         const roofY = this.height;
         
@@ -167,8 +174,8 @@ export class Building {
             z + (Math.random() - 0.5) * (this.depth * 0.5)
         );
         ac.castShadow = true;
-        scene.add(ac);
-        
+        this.group.add(ac);
+
         // Water tank (for some buildings)
         if (Math.random() > 0.5) {
             const tankGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 8);
@@ -180,11 +187,11 @@ export class Building {
                 z + (Math.random() - 0.5) * (this.depth * 0.5)
             );
             tank.castShadow = true;
-            scene.add(tank);
+            this.group.add(tank);
         }
     }
-    
-    addBalconies(scene, x, z) {
+
+    addBalconies(x, z) {
         // Add balconies to apartment buildings
         const balconyDepth = 0.5;
         const balconyWidth = this.width * 0.3;
@@ -228,7 +235,7 @@ export class Building {
             balcony.position.set(balconyX, floor * 2, balconyZ);
             balcony.castShadow = true;
             balcony.receiveShadow = true;
-            scene.add(balcony);
+            this.group.add(balcony);
         }
     }
     
@@ -384,7 +391,14 @@ export class Building {
             default:
                 texture.repeat.set(this.width / 5, this.height / 10);
         }
-        
+
         return texture;
+    }
+
+    /**
+     * Remove this building from the scene and free its geometry/material/textures.
+     */
+    dispose() {
+        ObjectUtils.dispose(this.group);
     }
 } 

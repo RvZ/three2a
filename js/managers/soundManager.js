@@ -52,20 +52,18 @@ export class SoundManager {
     }
     
     /**
-     * Generate all game sounds using SoundGenerator
+     * Generate all game sounds using SoundGenerator.
+     * These are generated synchronously so they're ready before the first frame.
      */
-    async generateSounds() {
+    generateSounds() {
         if (!this.audioContext) return;
-        
+
         // Generate procedural sounds
         this.sounds.engine = SoundGenerator.createEngineSound(this.audioContext, 400, 2);
         this.sounds.horn = SoundGenerator.createHornSound(this.audioContext);
         this.sounds.footstep = SoundGenerator.createFootstepSound(this.audioContext, 'concrete');
         this.sounds.crash = SoundGenerator.createCrashSound(this.audioContext, 0.7);
         this.sounds.vehicleStart = SoundGenerator.createVehicleStartSound(this.audioContext);
-        
-        // Load any external sounds if needed
-        // this.sounds.music = await SoundGenerator.loadSound(this.audioContext, 'sounds/music.mp3');
     }
     
     /**

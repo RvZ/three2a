@@ -245,6 +245,6 @@ export class HUD {
     }
     
     showExitVehicleMessage() {
-        this.showMessage('Exited vehicle ��', 2000);
+        this.showMessage('Exited vehicle 🚶', 2000);
     }
 } 

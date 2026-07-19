@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ObjectUtils } from '../utils/utils.js';
 
 export class Vehicle {
     constructor(type = 'sedan') {
@@ -15,6 +16,9 @@ export class Vehicle {
         this.type = type; // sedan, sports, truck, van
         this.color = this.getRandomColor();
         this.previousPosition = null;
+
+        // Collision radius, refined per body type in the create* methods
+        this.collisionRadius = 2.0;
         
         // Direction vector (normalized)
         this.direction = new THREE.Vector3(0, 0, 1); // Forward is +Z (where headlights point)
@@ -142,10 +146,11 @@ export class Vehicle {
         // Set higher max speed for sports cars
         this.maxSpeed = 30;
         this.acceleration = 20;
-        
+        this.collisionRadius = 2.1;
+
         scene.add(this.mesh);
     }
-    
+
     createTruck(scene, x, z) {
         // Create cab
         const cabGeometry = new THREE.BoxGeometry(2.2, 1.8, 2);
@@ -179,10 +184,11 @@ export class Vehicle {
         // Set lower max speed for trucks
         this.maxSpeed = 15;
         this.acceleration = 10;
-        
+        this.collisionRadius = 2.7;
+
         scene.add(this.mesh);
     }
-    
+
     createVan(scene, x, z) {
         // Create vehicle body (taller than sedan)
         const bodyGeometry = new THREE.BoxGeometry(2.2, 2, 4.5);
@@ -203,10 +209,12 @@ export class Vehicle {
         
         // Add lights
         this.addLights();
-        
+
+        this.collisionRadius = 2.4;
+
         scene.add(this.mesh);
     }
-    
+
     addWindows() {
         // Add windshield and windows
         const windowMaterial = new THREE.MeshStandardMaterial({ 
@@ -451,5 +459,12 @@ export class Vehicle {
     removeDriver() {
         this.driver = null;
         this.hasDriver = false;
+    }
+
+    /**
+     * Remove this vehicle's mesh from the scene and free its resources.
+     */
+    dispose() {
+        ObjectUtils.dispose(this.mesh);
     }
 } 

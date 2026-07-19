@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ObjectUtils } from '../utils/utils.js';
 
 export class Person {
     constructor(options = {}) {
@@ -13,10 +14,18 @@ export class Person {
         };
         
         this.mesh = null;
+        // Live position reference; assigned to mesh.position in init() so the
+        // collision system (which reads entity.position) can see NPCs.
+        this.position = null;
         this.walkingSpeed = 0.5 + Math.random() * 1.5; // Random walking speed for pedestrians
         this.walkingDirection = new THREE.Vector3(0, 0, 0);
         this.targetPosition = null;
         this.isWalking = false;
+
+        // Collision + health
+        this.collisionRadius = 0.5;
+        this.health = 100;
+        this.isDead = false;
         
         // Animation properties
         this.animationTime = 0;
@@ -38,6 +47,9 @@ export class Person {
         // Create the person group
         this.mesh = new THREE.Group();
         this.mesh.position.set(x, 0, z);
+
+        // Expose the mesh position as this.position so collision code can read it
+        this.position = this.mesh.position;
         
         // Create body parts
         this.createHead();
@@ -182,6 +194,9 @@ export class Person {
     }
     
     update(delta, direction) {
+        // Dead NPCs no longer move or animate
+        if (this.isDead) return;
+
         // For player-controlled person, use the provided direction
         if (this.options.isPlayer) {
             // If direction is provided, animate walking
@@ -283,10 +298,35 @@ export class Person {
     handleCollision() {
         if (this.previousPosition) {
             this.mesh.position.copy(this.previousPosition);
-            
+
             // Find a new target in a different direction
             this.findNewTarget();
         }
+    }
+
+    /**
+     * Apply damage to this pedestrian. Returns true if the hit was fatal.
+     * @param {number} amount - Damage amount
+     * @returns {boolean} True if the pedestrian died from this damage
+     */
+    takeDamage(amount) {
+        if (this.isDead) return false;
+
+        this.health -= amount;
+        if (this.health <= 0) {
+            this.health = 0;
+            this.isDead = true;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Remove this pedestrian's mesh from the scene and free its resources.
+     */
+    dispose() {
+        this.isDead = true;
+        ObjectUtils.dispose(this.mesh);
     }
     
     getRandomHairColor() {
