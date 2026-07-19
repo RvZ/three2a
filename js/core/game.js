@@ -19,6 +19,7 @@ import { InputManager } from '../managers/inputManager.js';
 import { CollisionManager } from '../managers/collisionManager.js';
 import { MobileControlManager } from '../managers/mobileControlManager.js';
 import { TrafficManager } from '../managers/trafficManager';
+import { PoliceManager } from '../managers/policeManager';
 
 export class Game {
   /** How much of the world the orthographic camera shows at zoom 1. */
@@ -192,6 +193,9 @@ export class Game {
     // Populate the streets with AI traffic.
     this.traffic = new TrafficManager(this);
     this.traffic.init(10);
+
+    // Police respond to the player's wanted level.
+    this.police = new PoliceManager(this);
 
     // Initialize HUD
     this.hud = new HUD(this);
@@ -620,6 +624,11 @@ export class Game {
         this.hud.decreaseWantedLevel();
         this.wantedCooldown = 7; // one star at a time
       }
+    }
+
+    // Police chase / bust logic responds to the wanted level.
+    if (this.police) {
+      this.police.update(delta);
     }
 
     // Advance the day/night cycle (sun, sky, fog, ambient) and light up
