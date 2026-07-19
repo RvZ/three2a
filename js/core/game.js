@@ -15,6 +15,9 @@ export class Game {
   /** How much of the world the orthographic camera shows at zoom 1. */
   static BASE_VIEW_SIZE = 30;
 
+  /** Largest simulation step (seconds) applied in a single frame. */
+  static MAX_DELTA = 0.1;
+
   constructor() {
     this.scene = null;
     this.camera = null;
@@ -95,8 +98,14 @@ export class Game {
     // Create renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    // Cap the device pixel ratio at 2: renders crisply on HiDPI / mobile
+    // without paying for 3x+ pixels on high-density phones.
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Filmic tone mapping + sRGB output gives richer, less washed-out lighting.
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.1;
     document.body.appendChild(this.renderer.domElement);
 
     // Initialize sound manager first
@@ -299,7 +308,9 @@ export class Game {
   update() {
     if (!this.isGameRunning) return;
 
-    const delta = this.clock.getDelta();
+    // Clamp delta so a background-tab stall (getDelta can return several
+    // seconds) can't teleport entities through walls on the next frame.
+    const delta = Math.min(this.clock.getDelta(), Game.MAX_DELTA);
 
     // Update player movement flags from input manager
     this.player.moveForward = this.inputManager.moveForward;

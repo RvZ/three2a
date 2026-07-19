@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { DebugUtils } from '../utils/utils';
+import { SpatialHash } from './spatialHash';
 
 export class CollisionManager {
   constructor(game) {
@@ -10,6 +11,11 @@ export class CollisionManager {
     this.pedestrians = [];
     this.buildings = [];
     this.obstacles = [];
+
+    // Broad-phase spatial index for the (static) buildings. Each building is
+    // inserted into every grid cell its footprint covers, so an entity only
+    // tests the handful of buildings sharing its cell instead of all of them.
+    this.buildingHash = new SpatialHash(12);
 
     // Collision settings
     this.vehicleCollisionRadius = 2.0;
@@ -78,6 +84,12 @@ export class CollisionManager {
         building._collisionCenter = center;
         // Half the XZ diagonal — a circle that fully contains the footprint
         building._broadRadius = Math.sqrt(size.x * size.x + size.z * size.z) / 2;
+
+        // Index it in the spatial hash by its XZ footprint (centre carried so
+        // the hash's SpatialItem shape is satisfied).
+        building.x = center.x;
+        building.z = center.z;
+        this.buildingHash.insertAABB(building, box.min.x, box.min.z, box.max.x, box.max.z);
       }
 
       this.buildings.push(building);
@@ -237,14 +249,10 @@ export class CollisionManager {
 
     const radius = entity.collisionRadius || this.pedestrianCollisionRadius;
 
-    for (const building of this.buildings) {
+    // Broad-phase: only buildings sharing the entity's grid cell(s).
+    const candidates = this.buildingHash.queryUnique(entity.position.x, entity.position.z, radius);
+    for (const building of candidates) {
       if (!building._collisionBox) continue;
-
-      // Broad-phase: skip buildings whose footprint circle is out of reach
-      const dx = entity.position.x - building._collisionCenter.x;
-      const dz = entity.position.z - building._collisionCenter.z;
-      const reach = radius + building._broadRadius;
-      if (dx * dx + dz * dz > reach * reach) continue;
 
       // Narrow-phase: precise box test
       if (this.isCollidingWithBuilding(entity, building)) return true;

@@ -28,6 +28,7 @@ export default tseslint.config(
         localStorage: 'readonly',
         AudioContext: 'readonly',
         performance: 'readonly',
+        devicePixelRatio: 'readonly',
         fetch: 'readonly',
         Image: 'readonly',
         HTMLElement: 'readonly',
