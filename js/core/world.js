@@ -44,6 +44,48 @@ export class World {
 
     // Create city with roads, sidewalks and buildings
     this.createCity(scene);
+
+    // Streetlights along the road grid (lit at night with the windows).
+    this.addStreetLights(scene);
+  }
+
+  /**
+   * Place lamp posts at the road-grid intersections. Their lamp heads are added
+   * to the window-material list so applyNightLevel() turns them on after dark.
+   */
+  addStreetLights(scene) {
+    const total = this.totalBlockSize || this.blockSize + this.roadWidth;
+    const half = (this.citySize * total) / 2;
+    const poleMat = new THREE.MeshStandardMaterial({
+      color: 0x2a2c30,
+      roughness: 0.6,
+      metalness: 0.6,
+    });
+    const off = this.roadWidth / 2 + 0.6;
+
+    for (let i = 0; i <= this.citySize; i++) {
+      for (let j = 0; j <= this.citySize; j++) {
+        const x = i * total - half + off;
+        const z = j * total - half + off;
+
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.11, 4, 8), poleMat);
+        pole.position.set(x, 2, z);
+        pole.castShadow = true;
+        scene.add(pole);
+
+        const headMat = new THREE.MeshStandardMaterial({
+          color: 0xfff2c0,
+          emissive: 0xffd24a,
+          emissiveIntensity: 0, // off by day; raised at night
+        });
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.5), headMat);
+        head.position.set(x, 4, z);
+        scene.add(head);
+
+        // Lit alongside building windows.
+        this.windowMaterials.push(headMat);
+      }
+    }
   }
 
   createGround(scene) {

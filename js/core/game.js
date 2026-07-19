@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -145,11 +144,13 @@ export class Game {
     this.renderer.toneMappingExposure = 1.1;
     document.body.appendChild(this.renderer.domElement);
 
-    // Image-based lighting: a pre-filtered neutral studio environment so that
-    // glossy/metallic materials (car paint, glass, chrome) get real specular
-    // reflections instead of reading flat. Matte surfaces are barely affected.
+    // Image-based lighting: a pre-filtered sky/ground gradient so glossy and
+    // metallic materials (car paint, glass, chrome) get natural outdoor
+    // reflections. A neutral gradient avoids the coloured casts a studio
+    // environment would add, and is kept fairly dim so it lifts specular
+    // highlights without washing out the day/night lighting.
     const pmrem = new THREE.PMREMGenerator(this.renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environment = pmrem.fromScene(this.createSkyEnvironment(), 0.5).texture;
     pmrem.dispose();
 
     // Post-processing: a bloom pass makes bright emissive surfaces (night
@@ -338,6 +339,31 @@ export class Game {
     }
 
     DebugUtils.log(`Added ${this.vehicles.length} player vehicles`);
+  }
+
+  /**
+   * Build a tiny scene containing a gradient sky dome, used only as a source
+   * for the pre-filtered environment map (image-based reflections).
+   */
+  createSkyEnvironment() {
+    const envScene = new THREE.Scene();
+    const geo = new THREE.SphereGeometry(50, 32, 16);
+    const top = new THREE.Color(0x6a8bb5); // sky
+    const bottom = new THREE.Color(0x3a3d44); // ground haze
+    const pos = geo.attributes.position;
+    const colors = [];
+    for (let i = 0; i < pos.count; i++) {
+      const t = THREE.MathUtils.clamp((pos.getY(i) / 50 + 1) / 2, 0, 1);
+      const c = bottom.clone().lerp(top, t);
+      colors.push(c.r, c.g, c.b);
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    const dome = new THREE.Mesh(
+      geo,
+      new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide }),
+    );
+    envScene.add(dome);
+    return envScene;
   }
 
   setupLighting() {

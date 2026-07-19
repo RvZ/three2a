@@ -87,6 +87,9 @@ export class Building {
     tower.receiveShadow = true;
     this.group.add(tower);
 
+    // Rooftop detail sized to the tower footprint.
+    this.addRoofDetails(x, z, towerWidth, towerDepth, this.height);
+
     // Add antenna or spire to top
     if (rand() > 0.5) {
       const antennaGeometry = new THREE.CylinderGeometry(0, 0.2, 2, 4);
@@ -122,8 +125,9 @@ export class Building {
     apartment.receiveShadow = true;
     this.group.add(apartment);
 
-    // Add balconies
+    // Add balconies + rooftop detail
     this.addBalconies(x, z);
+    this.addRoofDetails(x, z);
   }
 
   createHouse(x, z) {
@@ -167,34 +171,75 @@ export class Building {
     this.group.add(basic);
   }
 
-  addRoofDetails(x, z) {
-    // Add AC units, water tanks, etc. to roof
-    const roofY = this.height;
-
-    // AC unit
-    const acGeometry = new THREE.BoxGeometry(this.width * 0.3, 0.5, this.depth * 0.3);
-    const acMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
-    const ac = new THREE.Mesh(acGeometry, acMaterial);
-    ac.position.set(
-      x + (rand() - 0.5) * (this.width * 0.5),
-      roofY + 0.25,
-      z + (rand() - 0.5) * (this.depth * 0.5),
+  addRoofDetails(x, z, roofW = this.width, roofD = this.depth, roofY = this.height) {
+    // Gravel/tar roof cap so the top reads as a real roof, not wall paint.
+    const cap = new THREE.Mesh(
+      new THREE.BoxGeometry(roofW * 0.99, 0.12, roofD * 0.99),
+      new THREE.MeshStandardMaterial({ color: 0x3b3d42, roughness: 0.95 }),
     );
-    ac.castShadow = true;
-    this.group.add(ac);
+    cap.position.set(x, roofY + 0.06, z);
+    cap.castShadow = true;
+    cap.receiveShadow = true;
+    this.group.add(cap);
 
-    // Water tank (for some buildings)
-    if (rand() > 0.5) {
-      const tankGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 8);
-      const tankMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
-      const tank = new THREE.Mesh(tankGeometry, tankMaterial);
-      tank.position.set(
-        x + (rand() - 0.5) * (this.width * 0.5),
-        roofY + 0.5,
-        z + (rand() - 0.5) * (this.depth * 0.5),
+    // Parapet rim around the edge.
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0x6b6e75, roughness: 0.85 });
+    const rimH = 0.45;
+    const t = 0.18;
+    const rims = [
+      [roofW, t, 0, roofD / 2 - t / 2],
+      [roofW, t, 0, -roofD / 2 + t / 2],
+      [t, roofD, roofW / 2 - t / 2, 0],
+      [t, roofD, -roofW / 2 + t / 2, 0],
+    ];
+    for (const [rw, rd, ox, oz] of rims) {
+      const rim = new THREE.Mesh(new THREE.BoxGeometry(rw, rimH, rd), rimMat);
+      rim.position.set(x + ox, roofY + rimH / 2, z + oz);
+      rim.castShadow = true;
+      this.group.add(rim);
+    }
+
+    // A cluster of AC units.
+    const acMat = new THREE.MeshStandardMaterial({ color: 0x9a9da3, roughness: 0.7, metalness: 0.3 });
+    const count = 1 + Math.floor(rand() * 3);
+    for (let i = 0; i < count; i++) {
+      const aw = 0.6 + rand() * (roofW * 0.22);
+      const ad = 0.6 + rand() * (roofD * 0.22);
+      const ac = new THREE.Mesh(new THREE.BoxGeometry(aw, 0.5, ad), acMat);
+      ac.position.set(
+        x + (rand() - 0.5) * (roofW * 0.5),
+        roofY + 0.35,
+        z + (rand() - 0.5) * (roofD * 0.5),
       );
+      ac.castShadow = true;
+      this.group.add(ac);
+    }
+
+    // A vent pipe.
+    const vent = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.8, 8), acMat);
+    vent.position.set(x + (rand() - 0.5) * roofW * 0.4, roofY + 0.5, z + (rand() - 0.5) * roofD * 0.4);
+    vent.castShadow = true;
+    this.group.add(vent);
+
+    // A wooden water tank on some roofs.
+    if (rand() > 0.5) {
+      const tank = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 0.5, 1, 10),
+        new THREE.MeshStandardMaterial({ color: 0x8a6a4a, roughness: 0.8 }),
+      );
+      tank.position.set(x + (rand() - 0.5) * roofW * 0.4, roofY + 0.6, z + (rand() - 0.5) * roofD * 0.4);
       tank.castShadow = true;
       this.group.add(tank);
+    }
+
+    // Tall towers get a red aviation beacon (always glowing -> blooms at night).
+    if (this.height > 14) {
+      const beacon = new THREE.Mesh(
+        new THREE.SphereGeometry(0.18, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0xff0000, emissiveIntensity: 2.5 }),
+      );
+      beacon.position.set(x, roofY + 0.65, z);
+      this.group.add(beacon);
     }
   }
 
