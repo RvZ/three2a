@@ -17,6 +17,7 @@ import { SoundManager } from '../managers/soundManager.js';
 import { InputManager } from '../managers/inputManager.js';
 import { CollisionManager } from '../managers/collisionManager.js';
 import { MobileControlManager } from '../managers/mobileControlManager.js';
+import { TrafficManager } from '../managers/trafficManager';
 
 export class Game {
   /** How much of the world the orthographic camera shows at zoom 1. */
@@ -181,6 +182,10 @@ export class Game {
 
     // Add player vehicles on roads
     this.addPlayerVehicles();
+
+    // Populate the streets with AI traffic.
+    this.traffic = new TrafficManager(this);
+    this.traffic.init(10);
 
     // Initialize HUD
     this.hud = new HUD(this);
@@ -536,6 +541,11 @@ export class Game {
 
     // Update world (pedestrians, etc.)
     this.world.update(delta);
+
+    // Drive AI traffic along the road grid.
+    if (this.traffic) {
+      this.traffic.update(delta);
+    }
 
     // Advance the day/night cycle (sun, sky, fog, ambient) and light up
     // building windows as it gets dark.

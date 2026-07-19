@@ -29,6 +29,9 @@ export class Vehicle {
     this.health = 100;
     this.isWrecked = false;
 
+    // Set for AI-driven traffic cars (see TrafficManager).
+    this.isTraffic = false;
+
     // Direction vector (normalized)
     this.direction = new THREE.Vector3(0, 0, 1); // Forward is +Z (where headlights point)
   }

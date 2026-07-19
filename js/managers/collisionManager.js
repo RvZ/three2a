@@ -136,6 +136,12 @@ export class CollisionManager {
    * Check for collisions between vehicles
    */
   checkVehicleCollisions() {
+    // Only collisions involving the car the player is driving matter. NPC
+    // traffic and parked cars pass through each other, which keeps arcade
+    // traffic flowing instead of causing pile-ups on the narrow roads.
+    const playerCar = this.game.player && this.game.player.currentVehicle;
+    if (!playerCar) return;
+
     for (let i = 0; i < this.vehicles.length; i++) {
       const vehicle1 = this.vehicles[i];
 
@@ -147,6 +153,9 @@ export class CollisionManager {
 
         // Skip if vehicle has no position
         if (!vehicle2.position) continue;
+
+        // At least one car must be the player's.
+        if (vehicle1 !== playerCar && vehicle2 !== playerCar) continue;
 
         // Calculate distance between vehicles
         const distance = vehicle1.position.distanceTo(vehicle2.position);
@@ -404,7 +413,10 @@ export class CollisionManager {
       const killed = pedestrian.takeDamage(100);
       if (killed) {
         this.killPedestrian(pedestrian);
-        if (this.game && this.game.hud) {
+        // Only award points when the player's own car does the running-over,
+        // not when NPC traffic hits a jaywalker.
+        const isPlayerCar = this.game.player && this.game.player.currentVehicle === vehicle;
+        if (isPlayerCar && this.game.hud) {
           this.game.hud.addScore(50);
         }
       }
