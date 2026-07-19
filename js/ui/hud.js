@@ -20,19 +20,27 @@ export class HUD {
   }
 
   init() {
+    // Respect users who prefer reduced motion (disables the message fade).
+    this.reducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     // Create HUD container using DOMUtils
     this.container = DOMUtils.createElement('div', {
+      role: 'region',
+      'aria-label': 'Game heads-up display',
       style: {
         position: 'absolute',
         top: '0',
         left: '0',
         width: '100%',
-        padding: '10px',
+        padding: '12px',
         boxSizing: 'border-box',
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '24px',
-        color: 'white',
-        textShadow: '2px 2px 2px black',
+        fontFamily: "'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif",
+        fontSize: '20px',
+        fontWeight: '600',
+        color: '#f4f7ff',
         pointerEvents: 'none',
         zIndex: '1000',
         display: 'flex',
@@ -46,43 +54,48 @@ export class HUD {
       style: {
         display: 'flex',
         justifyContent: 'space-between',
+        alignItems: 'flex-start',
         width: '100%',
       },
     });
 
+    // Shared style for the translucent stat panels.
+    const panelStyle = {
+      display: 'flex',
+      gap: '16px',
+      alignItems: 'center',
+      padding: '8px 14px',
+      background: 'rgba(15, 20, 32, 0.55)',
+      border: '1px solid rgba(255, 255, 255, 0.12)',
+      borderRadius: '12px',
+      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.35)',
+      backdropFilter: 'blur(4px)',
+      WebkitBackdropFilter: 'blur(4px)',
+    };
+
     // Create left section (lives, wanted level)
-    const leftSection = DOMUtils.createElement('div', {
-      style: {
-        display: 'flex',
-        gap: '20px',
-      },
-    });
+    const leftSection = DOMUtils.createElement('div', { style: { ...panelStyle } });
 
     // Lives display
-    this.livesElement = DOMUtils.createElement('div');
+    this.livesElement = DOMUtils.createElement('div', { role: 'status' });
     this.updateLives();
     leftSection.appendChild(this.livesElement);
 
     // Wanted level display
-    this.wantedElement = DOMUtils.createElement('div');
+    this.wantedElement = DOMUtils.createElement('div', { role: 'status' });
     this.updateWantedLevel();
     leftSection.appendChild(this.wantedElement);
 
     // Create right section (money, score)
-    const rightSection = DOMUtils.createElement('div', {
-      style: {
-        display: 'flex',
-        gap: '20px',
-      },
-    });
+    const rightSection = DOMUtils.createElement('div', { style: { ...panelStyle } });
 
     // Money display
-    this.moneyElement = DOMUtils.createElement('div');
+    this.moneyElement = DOMUtils.createElement('div', { role: 'status' });
     this.updateMoney();
     rightSection.appendChild(this.moneyElement);
 
     // Score display
-    this.scoreElement = DOMUtils.createElement('div');
+    this.scoreElement = DOMUtils.createElement('div', { role: 'status' });
     this.updateScore();
     rightSection.appendChild(this.scoreElement);
 
@@ -93,14 +106,24 @@ export class HUD {
     // Add top bar to container
     this.container.appendChild(topBar);
 
-    // Create message area (for notifications)
+    // Create message area (for notifications). It's an ARIA live region so
+    // screen readers announce transient messages politely.
     this.messageElement = DOMUtils.createElement('div', {
+      role: 'status',
+      'aria-live': 'polite',
+      'aria-atomic': 'true',
       style: {
+        alignSelf: 'center',
         textAlign: 'center',
-        fontSize: '28px',
-        marginTop: '20px',
+        fontSize: '26px',
+        marginTop: '12px',
+        padding: '8px 18px',
+        maxWidth: '80%',
+        background: 'rgba(15, 20, 32, 0.6)',
+        borderRadius: '12px',
+        textShadow: '0 1px 3px rgba(0, 0, 0, 0.8)',
         opacity: '0',
-        transition: 'opacity 0.3s ease-in-out',
+        transition: this.reducedMotion ? 'none' : 'opacity 0.3s ease-in-out',
       },
     });
     this.container.appendChild(this.messageElement);
@@ -112,6 +135,9 @@ export class HUD {
     this.pauseOverlay = DOMUtils.createElement(
       'div',
       {
+        role: 'dialog',
+        'aria-modal': 'true',
+        'aria-label': 'Game paused',
         style: {
           position: 'absolute',
           inset: '0',
@@ -157,22 +183,28 @@ export class HUD {
 
   updateLives() {
     this.livesElement.innerHTML = '❤️'.repeat(this.lives);
+    // aria-label overrides the emoji so screen readers say "Lives: 3".
+    this.livesElement.setAttribute('aria-label', `Lives: ${this.lives}`);
   }
 
   updateWantedLevel() {
     if (this.wantedLevel === 0) {
       this.wantedElement.innerHTML = '';
+      this.wantedElement.setAttribute('aria-label', 'Wanted level: none');
     } else {
       this.wantedElement.innerHTML = '🚔'.repeat(this.wantedLevel);
+      this.wantedElement.setAttribute('aria-label', `Wanted level: ${this.wantedLevel} of 5`);
     }
   }
 
   updateMoney() {
     this.moneyElement.innerHTML = `💰 $${this.money}`;
+    this.moneyElement.setAttribute('aria-label', `Money: ${this.money} dollars`);
   }
 
   updateScore() {
     this.scoreElement.innerHTML = `🏆 ${this.score}`;
+    this.scoreElement.setAttribute('aria-label', `Score: ${this.score}`);
   }
 
   showMessage(message, duration = 3000) {
