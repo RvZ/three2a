@@ -4,6 +4,7 @@ import { Rng } from '../utils/rng';
 import { setRng, DebugUtils } from '../utils/utils';
 import { EventBus } from './eventBus';
 import { DayNightCycle } from './dayNightCycle';
+import { Minimap } from '../ui/minimap';
 import { Player } from '../entities/player.js';
 import { Vehicle } from '../entities/vehicle.js';
 import { HUD } from '../ui/hud.js';
@@ -150,6 +151,9 @@ export class Game {
     // Initialize HUD
     this.hud = new HUD(this);
     this.hud.init();
+
+    // Minimap overlay (bottom-right).
+    this.minimap = new Minimap(160);
 
     // Handle window resize and mouse-wheel zoom (bound refs so dispose() can
     // detach them).
@@ -303,6 +307,10 @@ export class Game {
     window.removeEventListener('resize', this._onResize);
     window.removeEventListener('wheel', this._onWheel);
     this.events.clear();
+    if (this.minimap) {
+      this.minimap.dispose();
+      this.minimap = null;
+    }
     if (this.engineSound) {
       this.engineSound.stop();
       this.engineSound = null;
@@ -436,6 +444,11 @@ export class Game {
 
     // Update camera to follow player
     this.updateCamera(delta);
+
+    // Refresh the minimap.
+    if (this.minimap) {
+      this.minimap.render(this);
+    }
   }
 
   /** Kick off a brief camera shake (e.g. on a crash). */
