@@ -167,11 +167,71 @@ export class HUD {
     this.pauseOverlay.appendChild(pausedTitle);
     this.pauseOverlay.appendChild(pausedHint);
     document.body.appendChild(this.pauseOverlay);
+  }
 
-    // Show welcome message
-    this.showMessage(
-      'Welcome to GTA 2 Style Game! 🎮 Use WASD to move, SPACE to enter/exit vehicles, P to pause',
-    );
+  /** Build (once) and show the start menu with the controls list. */
+  showStartMenu() {
+    if (!this.startOverlay) {
+      this.startOverlay = DOMUtils.createElement(
+        'div',
+        {
+          role: 'dialog',
+          'aria-modal': 'true',
+          'aria-label': 'Start menu',
+          style: {
+            position: 'absolute',
+            inset: '0',
+            display: 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'column',
+            gap: '16px',
+            background: 'rgba(8, 12, 24, 0.92)',
+            color: '#f4f7ff',
+            fontFamily: "'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif",
+            textAlign: 'center',
+            zIndex: '2200',
+            pointerEvents: 'none',
+          },
+        },
+        '',
+      );
+      const title = DOMUtils.createElement(
+        'div',
+        { style: { fontSize: '58px', fontWeight: 'bold', letterSpacing: '2px' } },
+        'GTA 2 STYLE',
+      );
+      const controls = DOMUtils.createElement('div', {
+        style: {
+          fontSize: '18px',
+          lineHeight: '1.8',
+          background: 'rgba(255,255,255,0.06)',
+          border: '1px solid rgba(255,255,255,0.12)',
+          padding: '16px 24px',
+          borderRadius: '12px',
+        },
+      });
+      controls.innerHTML =
+        '<b>Controls</b><br>' +
+        'WASD / Arrows — move &nbsp;·&nbsp; Space — enter/exit vehicle<br>' +
+        'F / Click — shoot &nbsp;·&nbsp; H — horn &nbsp;·&nbsp; M — mute<br>' +
+        'P / Esc — pause &nbsp;·&nbsp; Mouse wheel — zoom &nbsp;·&nbsp; B — debug';
+      const hint = DOMUtils.createElement(
+        'div',
+        { style: { fontSize: '22px', fontWeight: 'bold' } },
+        'Press Enter or click to play',
+      );
+      this.startOverlay.appendChild(title);
+      this.startOverlay.appendChild(controls);
+      this.startOverlay.appendChild(hint);
+      document.body.appendChild(this.startOverlay);
+    }
+    this.startOverlay.style.display = 'flex';
+  }
+
+  /** Hide the start menu. */
+  hideStartMenu() {
+    if (this.startOverlay) this.startOverlay.style.display = 'none';
   }
 
   /** Show or hide the pause overlay. */

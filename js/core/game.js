@@ -76,6 +76,10 @@ export class Game {
     // Game-over state (freezes sim; waits for a restart).
     this.gameOver = false;
 
+    // Start-menu gate: the sim is frozen until the player dismisses the menu
+    // (which also satisfies the browser's audio user-gesture requirement).
+    this.awaitingStart = true;
+
     // Seconds until the wanted level ticks down (reset on each new crime).
     this.wantedCooldown = 0;
     // Fire-rate limiter (seconds).
@@ -200,6 +204,9 @@ export class Game {
     // Initialize HUD
     this.hud = new HUD(this);
     this.hud.init();
+
+    // Show the start menu; the sim stays frozen until the player begins.
+    this.hud.showStartMenu();
 
     // Minimap overlay (bottom-right).
     this.minimap = new Minimap(160);
@@ -503,8 +510,28 @@ export class Game {
     window.location.reload();
   }
 
+  /** Dismiss the start menu and begin play (also unlocks audio). */
+  startGame() {
+    if (!this.awaitingStart) return;
+    this.awaitingStart = false;
+    this.inputManager.firePressed = false; // don't fire from the dismissing click
+    this.hud.hideStartMenu();
+    this.soundManager.resumeAudioContext();
+    this.hud.showMessage('Go! 🚗', 1800);
+  }
+
   update() {
     if (!this.isGameRunning) return;
+
+    // Waiting on the start menu: freeze the sim until the player begins.
+    if (this.awaitingStart) {
+      if (this.inputManager.startPressed) {
+        this.inputManager.startPressed = false;
+        this.startGame();
+      }
+      this.clock.getDelta(); // drain so the first real frame has a small delta
+      return;
+    }
 
     // Game over: freeze the sim and wait for a restart.
     if (this.gameOver) {
