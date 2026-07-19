@@ -20,6 +20,10 @@ export class Vehicle {
     // Collision radius, refined per body type in the create* methods
     this.collisionRadius = 2.0;
 
+    // Shared head/tail light materials, brightened at night (set in addLights).
+    this.headlightMaterial = null;
+    this.taillightMaterial = null;
+
     // Direction vector (normalized)
     this.direction = new THREE.Vector3(0, 0, 1); // Forward is +Z (where headlights point)
   }
@@ -276,6 +280,7 @@ export class Vehicle {
       emissive: 0xffffcc,
       emissiveIntensity: 0.5,
     });
+    this.headlightMaterial = headlightMaterial;
 
     const rightHeadlight = new THREE.Mesh(headlightGeometry, headlightMaterial);
     rightHeadlight.scale.set(1, 0.5, 0.5);
@@ -294,6 +299,7 @@ export class Vehicle {
       emissive: 0xff0000,
       emissiveIntensity: 0.5,
     });
+    this.taillightMaterial = taillightMaterial;
 
     const rightTaillight = new THREE.Mesh(taillightGeometry, taillightMaterial);
     rightTaillight.scale.set(1, 0.5, 0.5);
@@ -436,6 +442,16 @@ export class Vehicle {
         this.mesh.position.copy(this.previousPosition);
       }
     }
+  }
+
+  /**
+   * Brighten the head/tail lights as night falls.
+   * @param {number} n - 0 (full day) .. 1 (full night)
+   */
+  setNightLevel(n) {
+    const t = Math.max(0, Math.min(1, n));
+    if (this.headlightMaterial) this.headlightMaterial.emissiveIntensity = 0.4 + t * 1.8;
+    if (this.taillightMaterial) this.taillightMaterial.emissiveIntensity = 0.35 + t * 1.25;
   }
 
   setDriver(player) {

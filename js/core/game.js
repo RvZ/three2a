@@ -54,6 +54,9 @@ export class Game {
     // Camera screen-shake amount (decays each frame).
     this.shakeAmount = 0;
 
+    // Last night level applied to vehicle lights (-1 = not yet applied).
+    this._appliedNight = -1;
+
     // Paused state (freezes simulation; rendering continues).
     this.paused = false;
 
@@ -440,6 +443,15 @@ export class Game {
       // Fade windows in as the sun drops: full glow once daylight is gone.
       const nightLevel = Math.max(0, Math.min(1, (0.35 - this.dayNight.daylight) / 0.35));
       this.world.applyNightLevel(nightLevel);
+
+      // Brighten every vehicle's head/tail lights at night (only when the level
+      // meaningfully changes, to avoid touching every material each frame).
+      if (Math.abs(nightLevel - this._appliedNight) >= 0.01) {
+        this._appliedNight = nightLevel;
+        for (const vehicle of this.collisionManager.vehicles) {
+          if (vehicle.setNightLevel) vehicle.setNightLevel(nightLevel);
+        }
+      }
     }
 
     // Update collision system
