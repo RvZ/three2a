@@ -9,6 +9,7 @@ import { setRng, DebugUtils } from '../utils/utils';
 import { EventBus } from './eventBus';
 import { DayNightCycle } from './dayNightCycle';
 import { ParticleSystem } from '../effects/particles';
+import { ProjectileManager } from '../effects/projectiles';
 import { Minimap } from '../ui/minimap';
 import { Player } from '../entities/player.js';
 import { Vehicle } from '../entities/vehicle.js';
@@ -73,6 +74,11 @@ export class Game {
 
     // Game-over state (freezes sim; waits for a restart).
     this.gameOver = false;
+
+    // Seconds until the wanted level ticks down (reset on each new crime).
+    this.wantedCooldown = 0;
+    // Fire-rate limiter (seconds).
+    this.fireCooldown = 0;
 
     // Event bus decouples systems (collision -> HUD/sound) without back-refs.
     this.events = new EventBus();
@@ -197,6 +203,20 @@ export class Game {
     // Particle effects (vehicle exhaust, crash sparks).
     this.particles = new ParticleSystem();
     this.scene.add(this.particles.points);
+
+    // Player weapon projectiles. Hits route back here so scoring, wanted level
+    // and damage stay centralised.
+    this.projectiles = new ProjectileManager(this);
+    this.projectiles.onBulletHitPedestrian = (ped) => {
+      this.collisionManager.killPedestrian(ped);
+      this.hud.addScore(25);
+      this.raiseWanted();
+    };
+    this.projectiles.onBulletHitVehicle = (vehicle) => {
+      this.collisionManager.damageVehicle(vehicle, 34);
+      this.raiseWanted();
+    };
+    this.fireCooldown = 0;
 
     // Handle window resize and mouse-wheel zoom (bound refs so dispose() can
     // detach them).
@@ -388,6 +408,10 @@ export class Game {
       this.composer.dispose();
       this.composer = null;
     }
+    if (this.projectiles) {
+      this.projectiles.dispose();
+      this.projectiles = null;
+    }
     if (this.engineSound) {
       this.engineSound.stop();
       this.engineSound = null;
@@ -424,6 +448,34 @@ export class Game {
     } else if (!paused && this.player && this.player.isInVehicle && this.soundManager) {
       this.engineSound = this.soundManager.playEngineSound(800);
     }
+  }
+
+  /**
+   * Fire the player's weapon from the player (or their vehicle) forward.
+   * Firing in the street is itself a minor crime.
+   */
+  fireWeapon() {
+    if (!this.projectiles || this.player.isDead) return;
+
+    let origin;
+    let dir;
+    if (this.player.isInVehicle && this.player.currentVehicle) {
+      const v = this.player.currentVehicle;
+      dir = v.direction.clone();
+      origin = v.position.clone().add(dir.clone().multiplyScalar(2.6));
+    } else {
+      dir = this.player.direction.clone();
+      origin = this.player.position.clone().add(dir.clone().multiplyScalar(0.8));
+    }
+    this.projectiles.fire(origin, dir);
+    this.soundManager.playCrash(0.3); // stand-in gunshot pop
+  }
+
+  /** Commit a crime: bump the wanted level and reset its decay timer. */
+  raiseWanted() {
+    if (!this.hud) return;
+    this.hud.increaseWantedLevel();
+    this.wantedCooldown = 12; // seconds of heat before it starts cooling
   }
 
   /** End the game: freeze the sim, silence the engine, show the overlay. */
@@ -496,6 +548,17 @@ export class Game {
       // Don't reset the flag here to allow continuous honking
     }
 
+    // Fire weapon (F / click). Rate-limited so a held key/mouse doesn't spray
+    // the whole pool in one frame.
+    this.fireCooldown = Math.max(0, this.fireCooldown - delta);
+    if (this.inputManager.firePressed) {
+      this.inputManager.firePressed = false;
+      if (this.fireCooldown === 0) {
+        this.fireWeapon();
+        this.fireCooldown = 0.18;
+      }
+    }
+
     // Check for debug mode toggle (edge-triggered in the input manager)
     if (this.inputManager.debugTogglePressed) {
       this.inputManager.debugTogglePressed = false;
@@ -545,6 +608,18 @@ export class Game {
     // Drive AI traffic along the road grid.
     if (this.traffic) {
       this.traffic.update(delta);
+    }
+
+    // Advance bullets and cool down the wanted level.
+    if (this.projectiles) {
+      this.projectiles.update(delta);
+    }
+    if (this.hud && this.hud.wantedLevel > 0) {
+      this.wantedCooldown -= delta;
+      if (this.wantedCooldown <= 0) {
+        this.hud.decreaseWantedLevel();
+        this.wantedCooldown = 7; // one star at a time
+      }
     }
 
     // Advance the day/night cycle (sun, sky, fog, ambient) and light up

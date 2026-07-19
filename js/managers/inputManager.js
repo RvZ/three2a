@@ -19,6 +19,7 @@ export class InputManager {
     this.debugTogglePressed = false;
     this.pauseTogglePressed = false;
     this.restartPressed = false;
+    this.firePressed = false;
 
     // Mouse state
     this.mouseX = 0;
@@ -77,6 +78,9 @@ export class InputManager {
       case 'r':
         this.restartPressed = true;
         break;
+      case 'f':
+        this.firePressed = true;
+        break;
       case 'm':
         // Toggle sound (handled directly)
         if (this.game && this.game.soundManager) {
@@ -124,6 +128,7 @@ export class InputManager {
 
   handleMouseDown() {
     this.mouseDown = true;
+    this.firePressed = true;
   }
 
   handleMouseUp() {
@@ -146,6 +151,7 @@ export class InputManager {
     this.debugTogglePressed = false;
     this.pauseTogglePressed = false;
     this.restartPressed = false;
+    this.firePressed = false;
     this.mouseDown = false;
   }
 }
