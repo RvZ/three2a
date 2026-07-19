@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { ObjectUtils, rand, orientDirection } from '../utils/utils';
 
 export class Vehicle {
@@ -78,84 +79,49 @@ export class Vehicle {
   }
 
   createSedan(scene, x, z) {
-    // Create vehicle body
-    const bodyGeometry = new THREE.BoxGeometry(2, 1, 4);
-    const bodyMaterial = new THREE.MeshStandardMaterial({ color: this.color });
-    this.mesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    this.mesh.position.set(x, 0.5, z);
-    this.mesh.castShadow = true;
-    this.mesh.receiveShadow = true;
+    this.makeMaterials();
+    this.mesh = new THREE.Group();
+    this.mesh.position.set(x, 0, z);
 
-    // Add roof
-    const roofGeometry = new THREE.BoxGeometry(1.8, 0.8, 2);
-    const roofMaterial = new THREE.MeshStandardMaterial({ color: this.getDarkerColor(this.color) });
-    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-    roof.position.set(0, 0.9, -0.5);
-    this.mesh.add(roof);
+    // Lower body, glass greenhouse, roof cap, chrome bumpers, side sills.
+    this.part(this.rbox(2.0, 0.7, 4.2, 0.28), this.bodyMaterial, 0, 0.55, 0);
+    this.part(this.rbox(1.7, 0.62, 2.1, 0.22), this.glassMaterial, 0, 1.05, -0.2);
+    this.part(this.rbox(1.55, 0.16, 1.5, 0.14), this.bodyMaterial, 0, 1.34, -0.35);
+    this.part(this.rbox(1.95, 0.26, 0.3, 0.1), this.chromeMaterial, 0, 0.42, 2.0);
+    this.part(this.rbox(1.95, 0.26, 0.3, 0.1), this.chromeMaterial, 0, 0.42, -2.0);
+    this.part(this.rbox(2.04, 0.16, 3.4, 0.07), this.trimMaterial, 0, 0.3, 0);
 
-    // Add windows
-    this.addWindows();
-
-    // Add wheels
-    this.addWheel(0.8, 0, 1.2);
-    this.addWheel(-0.8, 0, 1.2);
-    this.addWheel(0.8, 0, -1.2);
-    this.addWheel(-0.8, 0, -1.2);
-
-    // Add lights
-    this.addLights();
+    this.addWheel(0.92, 1.25, 0.42);
+    this.addWheel(-0.92, 1.25, 0.42);
+    this.addWheel(0.92, -1.25, 0.42);
+    this.addWheel(-0.92, -1.25, 0.42);
+    this.addLights(2.05, -2.05, 0.55);
+    this.collisionRadius = 2.0;
 
     scene.add(this.mesh);
   }
 
   createSportsCar(scene, x, z) {
-    // Create vehicle body (lower and wider than sedan)
-    const bodyGeometry = new THREE.BoxGeometry(2.2, 0.8, 4.2);
-    const bodyMaterial = new THREE.MeshStandardMaterial({ color: this.color });
-    this.mesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    this.mesh.position.set(x, 0.4, z);
-    this.mesh.castShadow = true;
-    this.mesh.receiveShadow = true;
+    this.makeMaterials();
+    this.mesh = new THREE.Group();
+    this.mesh.position.set(x, 0, z);
 
-    // Add roof (lower profile)
-    const roofGeometry = new THREE.BoxGeometry(2, 0.6, 1.8);
-    const roofMaterial = new THREE.MeshStandardMaterial({ color: this.getDarkerColor(this.color) });
-    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-    roof.position.set(0, 0.7, -0.5);
-    this.mesh.add(roof);
+    // Low, wide body with a rear wing.
+    this.part(this.rbox(2.1, 0.55, 4.4, 0.3), this.bodyMaterial, 0, 0.45, 0);
+    this.part(this.rbox(1.75, 0.48, 1.9, 0.2), this.glassMaterial, 0, 0.85, -0.1);
+    this.part(this.rbox(1.6, 0.13, 1.2, 0.1), this.bodyMaterial, 0, 1.05, -0.25);
+    this.part(this.rbox(1.7, 0.1, 0.5, 0.05), this.trimMaterial, 0, 0.72, -2.0);
+    this.part(this.rbox(0.12, 0.3, 0.12, 0.04), this.trimMaterial, 0.7, 0.57, -1.95);
+    this.part(this.rbox(0.12, 0.3, 0.12, 0.04), this.trimMaterial, -0.7, 0.57, -1.95);
+    this.part(this.rbox(2.0, 0.2, 0.28, 0.08), this.chromeMaterial, 0, 0.34, 2.1);
+    this.part(this.rbox(2.0, 0.2, 0.28, 0.08), this.chromeMaterial, 0, 0.34, -2.1);
 
-    // Add spoiler
-    const spoilerGeometry = new THREE.BoxGeometry(1.8, 0.2, 0.5);
-    const spoilerMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
-    const spoiler = new THREE.Mesh(spoilerGeometry, spoilerMaterial);
-    spoiler.position.set(0, 0.7, -2);
-    this.mesh.add(spoiler);
+    this.addWheel(0.96, 1.35, 0.5);
+    this.addWheel(-0.96, 1.35, 0.5);
+    this.addWheel(0.96, -1.35, 0.5);
+    this.addWheel(-0.96, -1.35, 0.5);
+    this.addLights(2.15, -2.15, 0.45);
 
-    // Add spoiler supports
-    const supportGeometry = new THREE.BoxGeometry(0.1, 0.3, 0.1);
-    const supportMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
-
-    const leftSupport = new THREE.Mesh(supportGeometry, supportMaterial);
-    leftSupport.position.set(0.7, 0.5, -2);
-    this.mesh.add(leftSupport);
-
-    const rightSupport = new THREE.Mesh(supportGeometry, supportMaterial);
-    rightSupport.position.set(-0.7, 0.5, -2);
-    this.mesh.add(rightSupport);
-
-    // Add windows
-    this.addWindows();
-
-    // Add wheels (larger than sedan)
-    this.addWheel(0.9, 0, 1.3, 0.5);
-    this.addWheel(-0.9, 0, 1.3, 0.5);
-    this.addWheel(0.9, 0, -1.3, 0.5);
-    this.addWheel(-0.9, 0, -1.3, 0.5);
-
-    // Add lights
-    this.addLights();
-
-    // Set higher max speed for sports cars
     this.maxSpeed = 30;
     this.acceleration = 20;
     this.collisionRadius = 2.1;
@@ -164,36 +130,30 @@ export class Vehicle {
   }
 
   createTruck(scene, x, z) {
-    // Create cab
-    const cabGeometry = new THREE.BoxGeometry(2.2, 1.8, 2);
-    const cabMaterial = new THREE.MeshStandardMaterial({ color: this.color });
-    this.mesh = new THREE.Mesh(cabGeometry, cabMaterial);
-    this.mesh.position.set(x, 0.9, z);
-    this.mesh.castShadow = true;
-    this.mesh.receiveShadow = true;
+    this.makeMaterials();
+    this.cargoMaterial = new THREE.MeshStandardMaterial({
+      color: 0x9aa0aa,
+      metalness: 0.35,
+      roughness: 0.55,
+      envMapIntensity: 1,
+    });
+    this.mesh = new THREE.Group();
+    this.mesh.position.set(x, 0, z);
 
-    // Create cargo area
-    const cargoGeometry = new THREE.BoxGeometry(2.2, 1.5, 3);
-    const cargoMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
-    const cargo = new THREE.Mesh(cargoGeometry, cargoMaterial);
-    cargo.position.set(0, 0, -2.5);
-    this.mesh.add(cargo);
+    // Cab up front, boxy cargo behind, big wheels.
+    this.part(this.rbox(2.2, 1.5, 1.9, 0.22), this.bodyMaterial, 0, 1.05, 1.85);
+    this.part(this.rbox(1.95, 0.8, 0.25, 0.08), this.glassMaterial, 0, 1.5, 2.72);
+    this.part(this.rbox(2.3, 1.8, 3.4, 0.12), this.cargoMaterial, 0, 1.15, -1.1);
+    this.part(this.rbox(2.1, 0.3, 0.3, 0.08), this.chromeMaterial, 0, 0.45, 2.9);
 
-    // Add windows
-    this.addWindows();
+    this.addWheel(1.0, 1.7, 0.55);
+    this.addWheel(-1.0, 1.7, 0.55);
+    this.addWheel(1.0, -1.0, 0.55);
+    this.addWheel(-1.0, -1.0, 0.55);
+    this.addWheel(1.0, -2.5, 0.55);
+    this.addWheel(-1.0, -2.5, 0.55);
+    this.addLights(2.85, -2.85, 0.7);
 
-    // Add wheels (larger than sedan)
-    this.addWheel(1, 0, 0.7, 0.6);
-    this.addWheel(-1, 0, 0.7, 0.6);
-    this.addWheel(1, 0, -2, 0.6);
-    this.addWheel(-1, 0, -2, 0.6);
-    this.addWheel(1, 0, -3.5, 0.6);
-    this.addWheel(-1, 0, -3.5, 0.6);
-
-    // Add lights
-    this.addLights();
-
-    // Set lower max speed for trucks
     this.maxSpeed = 15;
     this.acceleration = 10;
     this.collisionRadius = 2.7;
@@ -202,161 +162,121 @@ export class Vehicle {
   }
 
   createVan(scene, x, z) {
-    // Create vehicle body (taller than sedan)
-    const bodyGeometry = new THREE.BoxGeometry(2.2, 2, 4.5);
-    const bodyMaterial = new THREE.MeshStandardMaterial({ color: this.color });
-    this.mesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    this.mesh.position.set(x, 1, z);
-    this.mesh.castShadow = true;
-    this.mesh.receiveShadow = true;
+    this.makeMaterials();
+    this.mesh = new THREE.Group();
+    this.mesh.position.set(x, 0, z);
 
-    // Add windows
-    this.addWindows();
+    // Tall body, raked windshield, side glass band.
+    this.part(this.rbox(2.1, 1.7, 4.4, 0.32), this.bodyMaterial, 0, 1.05, -0.15);
+    this.part(this.rbox(1.95, 0.85, 0.28, 0.1), this.glassMaterial, 0, 1.55, 2.02);
+    this.part(this.rbox(2.16, 0.6, 2.4, 0.06), this.glassMaterial, 0, 1.55, 0.6);
+    this.part(this.rbox(2.05, 0.28, 0.3, 0.08), this.chromeMaterial, 0, 0.45, 2.2);
+    this.part(this.rbox(2.05, 0.28, 0.3, 0.08), this.chromeMaterial, 0, 0.45, -2.2);
 
-    // Add wheels
-    this.addWheel(0.9, 0, 1.5, 0.5);
-    this.addWheel(-0.9, 0, 1.5, 0.5);
-    this.addWheel(0.9, 0, -1.5, 0.5);
-    this.addWheel(-0.9, 0, -1.5, 0.5);
-
-    // Add lights
-    this.addLights();
+    this.addWheel(0.96, 1.5, 0.5);
+    this.addWheel(-0.96, 1.5, 0.5);
+    this.addWheel(0.96, -1.5, 0.5);
+    this.addWheel(-0.96, -1.5, 0.5);
+    this.addLights(2.25, -2.25, 0.6);
 
     this.collisionRadius = 2.4;
 
     scene.add(this.mesh);
   }
 
-  addWindows() {
-    // Add windshield and windows
-    const windowMaterial = new THREE.MeshStandardMaterial({
-      color: 0x88ccff,
-      transparent: true,
-      opacity: 0.7,
+  /** Create the shared PBR materials for this vehicle's body. */
+  makeMaterials() {
+    this.bodyMaterial = new THREE.MeshStandardMaterial({
+      color: this.color,
+      metalness: 0.6,
+      roughness: 0.35,
+      envMapIntensity: 1.2,
     });
-
-    // Different window configurations based on vehicle type
-    if (this.type === 'sedan' || this.type === 'sports') {
-      // Windshield
-      const windshieldGeometry = new THREE.PlaneGeometry(1.6, 0.8);
-      const windshield = new THREE.Mesh(windshieldGeometry, windowMaterial);
-      windshield.position.set(0, 1, 0.8);
-      windshield.rotation.x = Math.PI / 2 - 0.2;
-      this.mesh.add(windshield);
-
-      // Rear window
-      const rearWindowGeometry = new THREE.PlaneGeometry(1.6, 0.7);
-      const rearWindow = new THREE.Mesh(rearWindowGeometry, windowMaterial);
-      rearWindow.position.set(0, 1, -1.8);
-      rearWindow.rotation.x = -Math.PI / 2 + 0.2;
-      this.mesh.add(rearWindow);
-    } else if (this.type === 'truck') {
-      // Truck windshield
-      const windshieldGeometry = new THREE.PlaneGeometry(1.8, 1);
-      const windshield = new THREE.Mesh(windshieldGeometry, windowMaterial);
-      windshield.position.set(0, 1.3, 1);
-      windshield.rotation.x = Math.PI / 2 - 0.1;
-      this.mesh.add(windshield);
-    } else if (this.type === 'van') {
-      // Van windshield
-      const windshieldGeometry = new THREE.PlaneGeometry(1.8, 1);
-      const windshield = new THREE.Mesh(windshieldGeometry, windowMaterial);
-      windshield.position.set(0, 1.5, 2.2);
-      windshield.rotation.x = Math.PI / 2 - 0.1;
-      this.mesh.add(windshield);
-
-      // Van side windows
-      const sideWindowGeometry = new THREE.PlaneGeometry(3, 0.8);
-
-      const leftWindow = new THREE.Mesh(sideWindowGeometry, windowMaterial);
-      leftWindow.position.set(1.11, 1.5, 0);
-      leftWindow.rotation.y = Math.PI / 2;
-      this.mesh.add(leftWindow);
-
-      const rightWindow = new THREE.Mesh(sideWindowGeometry, windowMaterial);
-      rightWindow.position.set(-1.11, 1.5, 0);
-      rightWindow.rotation.y = -Math.PI / 2;
-      this.mesh.add(rightWindow);
-    }
+    this.glassMaterial = new THREE.MeshStandardMaterial({
+      color: 0x171d29,
+      metalness: 0.25,
+      roughness: 0.07,
+      envMapIntensity: 1.6,
+    });
+    this.chromeMaterial = new THREE.MeshStandardMaterial({
+      color: 0xd7dadf,
+      metalness: 1.0,
+      roughness: 0.28,
+      envMapIntensity: 1.5,
+    });
+    this.trimMaterial = new THREE.MeshStandardMaterial({
+      color: 0x111114,
+      metalness: 0.7,
+      roughness: 0.45,
+    });
+    this.tireMaterial = new THREE.MeshStandardMaterial({
+      color: 0x0d0d0f,
+      metalness: 0.0,
+      roughness: 0.85,
+    });
+    this.hubMaterial = new THREE.MeshStandardMaterial({
+      color: 0xc9ccd2,
+      metalness: 0.95,
+      roughness: 0.3,
+      envMapIntensity: 1.5,
+    });
   }
 
-  addLights() {
-    // Add headlights
-    const headlightGeometry = new THREE.SphereGeometry(0.2, 8, 8);
-    const headlightMaterial = new THREE.MeshStandardMaterial({
+  /** A rounded box geometry (nicer silhouette than a hard-edged BoxGeometry). */
+  rbox(w, h, d, r = 0.12) {
+    return new RoundedBoxGeometry(w, h, d, 4, r);
+  }
+
+  /** Add a shadow-casting mesh to the vehicle group at a local position. */
+  part(geometry, material, x, y, z) {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    this.mesh.add(mesh);
+    return mesh;
+  }
+
+  /**
+   * Add head/tail light bars. Positions are passed in so each body type places
+   * them on its own front/rear faces.
+   */
+  addLights(frontZ, backZ, y = 0.5) {
+    this.headlightMaterial = new THREE.MeshStandardMaterial({
       color: 0xffffcc,
       emissive: 0xffffcc,
       emissiveIntensity: 0.5,
     });
-    this.headlightMaterial = headlightMaterial;
-
-    const rightHeadlight = new THREE.Mesh(headlightGeometry, headlightMaterial);
-    rightHeadlight.scale.set(1, 0.5, 0.5);
-    rightHeadlight.position.set(0.7, 0.5, 2);
-    this.mesh.add(rightHeadlight);
-
-    const leftHeadlight = new THREE.Mesh(headlightGeometry, headlightMaterial);
-    leftHeadlight.scale.set(1, 0.5, 0.5);
-    leftHeadlight.position.set(-0.7, 0.5, 2);
-    this.mesh.add(leftHeadlight);
-
-    // Add taillights
-    const taillightGeometry = new THREE.SphereGeometry(0.15, 8, 8);
-    const taillightMaterial = new THREE.MeshStandardMaterial({
-      color: 0xff0000,
+    this.taillightMaterial = new THREE.MeshStandardMaterial({
+      color: 0xff3322,
       emissive: 0xff0000,
       emissiveIntensity: 0.5,
     });
-    this.taillightMaterial = taillightMaterial;
 
-    const rightTaillight = new THREE.Mesh(taillightGeometry, taillightMaterial);
-    rightTaillight.scale.set(1, 0.5, 0.5);
+    const hl = new THREE.BoxGeometry(0.38, 0.2, 0.12);
+    this.part(hl, this.headlightMaterial, 0.62, y, frontZ);
+    this.part(hl, this.headlightMaterial, -0.62, y, frontZ);
 
-    const leftTaillight = new THREE.Mesh(taillightGeometry, taillightMaterial);
-    leftTaillight.scale.set(1, 0.5, 0.5);
-
-    // Position taillights based on vehicle type
-    if (this.type === 'truck') {
-      rightTaillight.position.set(0.7, 0.5, -4);
-      leftTaillight.position.set(-0.7, 0.5, -4);
-    } else {
-      rightTaillight.position.set(0.7, 0.5, -2);
-      leftTaillight.position.set(-0.7, 0.5, -2);
-    }
-
-    this.mesh.add(rightTaillight);
-    this.mesh.add(leftTaillight);
+    const tl = new THREE.BoxGeometry(0.44, 0.18, 0.1);
+    this.part(tl, this.taillightMaterial, 0.62, y, backZ);
+    this.part(tl, this.taillightMaterial, -0.62, y, backZ);
   }
 
-  addWheel(x, y, z, radius = 0.4) {
-    const wheelGeometry = new THREE.CylinderGeometry(radius, radius, 0.3, 16);
-    const wheelMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 });
-    const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
-    wheel.position.set(x, y, z);
-    wheel.rotation.z = Math.PI / 2;
-    this.mesh.add(wheel);
+  /** Add a tyre + hubcap pair centred at (x, z), sitting on the ground. */
+  addWheel(x, z, r = 0.42) {
+    const tire = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.34, 20), this.tireMaterial);
+    tire.rotation.z = Math.PI / 2;
+    tire.position.set(x, r, z);
+    tire.castShadow = true;
+    this.mesh.add(tire);
 
-    // Add hubcap
-    const hubcapGeometry = new THREE.CircleGeometry(radius * 0.6, 8);
-    const hubcapMaterial = new THREE.MeshStandardMaterial({ color: 0xcccccc });
-    const hubcap = new THREE.Mesh(hubcapGeometry, hubcapMaterial);
-
-    // Position hubcap on the outside of the wheel
-    if (x > 0) {
-      hubcap.position.set(0.15, 0, 0);
-      hubcap.rotation.y = Math.PI / 2;
-    } else {
-      hubcap.position.set(-0.15, 0, 0);
-      hubcap.rotation.y = -Math.PI / 2;
-    }
-
-    wheel.add(hubcap);
-  }
-
-  getDarkerColor(color) {
-    const c = new THREE.Color(color);
-    c.multiplyScalar(0.7); // Make it 30% darker
-    return c;
+    const hub = new THREE.Mesh(
+      new THREE.CylinderGeometry(r * 0.55, r * 0.55, 0.36, 12),
+      this.hubMaterial,
+    );
+    hub.rotation.z = Math.PI / 2;
+    hub.position.set(x, r, z);
+    this.mesh.add(hub);
   }
 
   update(delta, inputManager) {
@@ -486,9 +406,9 @@ export class Vehicle {
     this.maxSpeed = 0;
     this.acceleration = 0;
 
-    // Char the body and kill the lights.
-    const body = this.mesh && this.mesh.material;
-    if (body && body.color) body.color.multiplyScalar(0.3);
+    // Char the paint (and cargo, if any) and kill the lights.
+    if (this.bodyMaterial && this.bodyMaterial.color) this.bodyMaterial.color.multiplyScalar(0.3);
+    if (this.cargoMaterial && this.cargoMaterial.color) this.cargoMaterial.color.multiplyScalar(0.3);
     if (this.headlightMaterial) this.headlightMaterial.emissiveIntensity = 0;
     if (this.taillightMaterial) this.taillightMaterial.emissiveIntensity = 0;
   }

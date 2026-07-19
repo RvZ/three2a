@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -143,6 +144,13 @@ export class Game {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.1;
     document.body.appendChild(this.renderer.domElement);
+
+    // Image-based lighting: a pre-filtered neutral studio environment so that
+    // glossy/metallic materials (car paint, glass, chrome) get real specular
+    // reflections instead of reading flat. Matte surfaces are barely affected.
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();
 
     // Post-processing: a bloom pass makes bright emissive surfaces (night
     // windows, headlights, crash sparks, the sun) glow. A high threshold keeps
