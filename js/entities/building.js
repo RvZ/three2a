@@ -10,6 +10,9 @@ export class Building {
     // structure can be collision-tested and disposed as one object.
     this.group = null;
     this.mesh = null;
+    // Side-face materials whose windows can light up at night. Collected so the
+    // world can drive their emissiveIntensity from the day/night cycle.
+    this.windowMaterials = [];
     this.type = this.determineType();
   }
 
@@ -260,14 +263,20 @@ export class Building {
         // Create window texture
         const texture = this.createWindowTexture();
 
-        materials.push(
-          new THREE.MeshStandardMaterial({
-            color: color,
-            map: texture,
-            roughness: 0.7,
-            metalness: 0.2,
-          }),
-        );
+        // Reuse the window texture as an emissive map so the lit windows glow
+        // after dark. emissiveIntensity starts at 0 (daytime) and is raised by
+        // World.applyNightLevel() as night falls.
+        const material = new THREE.MeshStandardMaterial({
+          color: color,
+          map: texture,
+          emissive: new THREE.Color(0xffdca8), // warm interior light
+          emissiveMap: texture,
+          emissiveIntensity: 0,
+          roughness: 0.7,
+          metalness: 0.2,
+        });
+        this.windowMaterials.push(material);
+        materials.push(material);
       } else {
         // Top and bottom faces
         materials.push(

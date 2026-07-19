@@ -433,9 +433,13 @@ export class Game {
     // Update world (pedestrians, etc.)
     this.world.update(delta);
 
-    // Advance the day/night cycle (sun, sky, fog, ambient).
+    // Advance the day/night cycle (sun, sky, fog, ambient) and light up
+    // building windows as it gets dark.
     if (this.dayNight) {
       this.dayNight.update(delta);
+      // Fade windows in as the sun drops: full glow once daylight is gone.
+      const nightLevel = Math.max(0, Math.min(1, (0.35 - this.dayNight.daylight) / 0.35));
+      this.world.applyNightLevel(nightLevel);
     }
 
     // Update collision system

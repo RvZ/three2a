@@ -11,6 +11,11 @@ export class World {
     this.sidewalks = [];
     this.pedestrians = [];
 
+    // Flattened list of building window materials, lit at night.
+    this.windowMaterials = [];
+    // Last night level applied, to skip redundant per-frame work.
+    this._nightLevel = -1;
+
     // City parameters
     this.citySize = 5; // Number of blocks in each direction
     this.blockSize = 20; // Size of a city block
@@ -88,6 +93,29 @@ export class World {
     this.sidewalks = this.cityGenerator.sidewalks;
     this.buildings = this.cityGenerator.buildings;
     this.pedestrians = this.cityGenerator.pedestrians;
+
+    // Collect all window materials once so night lighting is a flat-array walk.
+    this.windowMaterials = [];
+    for (const building of this.buildings) {
+      if (building.windowMaterials) {
+        this.windowMaterials.push(...building.windowMaterials);
+      }
+    }
+  }
+
+  /**
+   * Light building windows according to how dark it is.
+   * @param {number} nightLevel - 0 (full day) .. 1 (full night)
+   */
+  applyNightLevel(nightLevel) {
+    // Skip if effectively unchanged since last frame.
+    if (Math.abs(nightLevel - this._nightLevel) < 0.01) return;
+    this._nightLevel = nightLevel;
+
+    const intensity = Math.max(0, Math.min(1, nightLevel)) * 1.1;
+    for (const material of this.windowMaterials) {
+      material.emissiveIntensity = intensity;
+    }
   }
 
   update(delta) {
